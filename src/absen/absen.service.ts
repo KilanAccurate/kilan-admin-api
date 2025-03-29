@@ -160,6 +160,7 @@ export class AbsensiService {
             existedAbsen.endImgId = endImgId;
             existedAbsen.endImgUrl = endImgUrl;
             existedAbsen.endDate = absensiDto.endDate;
+            existedAbsen.remarks = absensiDto.remarks;
 
             const updatedAbsensi = await existedAbsen.save();
             return formatResponse('success', 200, 'Absensi updated successfully', updatedAbsensi);

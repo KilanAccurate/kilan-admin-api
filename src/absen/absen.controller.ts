@@ -45,6 +45,7 @@ export class AbsensiController {
         @Body() absensiDto: CreateAbsensiDto,
         @UploadedFile() endImgFile?: Express.Multer.File,
     ) {
+        console.log(absensiDto)
         return this.absensiService.absenKeluar(absensiDto, endImgFile, id);
     }
 

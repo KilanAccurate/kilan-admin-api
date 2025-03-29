@@ -18,8 +18,8 @@ export class AuthController {
     }
 
     @Post('login')
-    login(@Body('fullName') fullName: string, @Body('password') password: string) {
-        const result = this.authService.login(fullName, password);
+    login(@Body('fullName') fullName: string, @Body('password') password: string, @Body('site') site: string) {
+        const result = this.authService.login(fullName, password, site);
         return result;
     }
 

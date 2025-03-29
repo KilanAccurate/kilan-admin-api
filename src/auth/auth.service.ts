@@ -11,7 +11,7 @@ export class AuthService {
 
     }
 
-    async login(fullName: string, password: string) {
+    async login(fullName: string, password: string, site: string) {
         try {
             const user = await this.userModel.findOne({ fullName });
 
@@ -24,8 +24,11 @@ export class AuthService {
             if (!siteExists) {
                 return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
             }
+            if (user.site != site) {
+                return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
+            }
 
-            const token = generateJWT(user.id, user.fullName);
+            const token = generateJWT(user.id, user.fullName, user.site);
 
             return {
                 status: 'success',
