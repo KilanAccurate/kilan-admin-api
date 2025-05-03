@@ -9,6 +9,7 @@ import { CloudinaryService } from './cloudinary/cloudinary.service';
 import { AbsensiModule } from './absen/absen.module';
 import { CloudinaryProvider } from './cloudinary/cloudinary.provider';
 import { GlobalSettingModule } from './global/global-setting.module';
+import { CutiModule } from './cuti/cuti.module';
 
 @Module({
   controllers: [CloudinaryController],
@@ -20,6 +21,7 @@ import { GlobalSettingModule } from './global/global-setting.module';
     CloudinaryModule,
     AbsensiModule,
     GlobalSettingModule,
+    CutiModule,
   ],
   providers: [CloudinaryProvider, CloudinaryService],
 })

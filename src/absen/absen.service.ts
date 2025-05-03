@@ -6,7 +6,7 @@ import { formatResponse } from 'src/location/site-location.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Absensi, AbsensiDocument } from './schemas/absensi.schema';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
-import { CreateAbsensiDto } from './dto/absensi.dto';
+import { ApprovalData, CreateAbsensiDto } from './dto/absensi.dto';
 import { Media } from 'src/cloudinary/schemas/media.schema';
 
 @Injectable()
@@ -17,14 +17,55 @@ export class AbsensiService {
         private cloudinaryService: CloudinaryService,
     ) { }
 
-    async getUserAbsensiList(accountId: string): Promise<any> {
+    async getUserAbsensiList(
+        accountId: string,
+        startDate?: Date,
+        endDate?: Date,
+        type: 'all' | 'lembur' | 'reguler' = 'all',
+        page = 1,
+        limit = 25,
+    ): Promise<any> {
         try {
-            const absensiList = await this.absensiModel.find({ accountId }).lean();
-            return formatResponse('success', 200, 'Absensi list retrieved successfully', absensiList);
+            const query: any = { accountId };
+
+            // Date range filter
+            if (startDate && endDate) {
+                query.startDate = { $gte: startDate, $lte: endDate };
+            } else if (startDate) {
+                query.startDate = { $gte: startDate };
+            } else if (endDate) {
+                query.startDate = { $lte: endDate };
+            }
+
+            // Type filter
+            if (type === 'lembur') {
+                query.isOverTime = true;
+            } else if (type === 'reguler') {
+                query.isOverTime = false;
+            }
+
+            // Pagination
+            const skip = (page - 1) * limit;
+            const [totalCount, items] = await Promise.all([
+                this.absensiModel.countDocuments(query),
+                this.absensiModel.find(query).skip(skip).limit(limit).lean(),
+            ]);
+
+            const isMax = skip + items.length >= totalCount;
+
+            return formatResponse('success', 200, 'Absensi list retrieved successfully', {
+                items,
+                page,
+                limit,
+                totalCount,
+                isMax,
+            });
         } catch (error) {
             return formatResponse('error', 500, 'Failed to retrieve absensi list', error.message);
         }
     }
+
+
 
     async getUserAbsensi(accountId: string, absensiId: string): Promise<any> {
         try {
@@ -101,6 +142,7 @@ export class AbsensiService {
             return formatResponse('error', 500, 'Failed to add absensi', error.message);
         }
     }
+
     async absenKeluar(
         absensiDto: CreateAbsensiDto,
         endImgFile?: Express.Multer.File,
@@ -170,6 +212,40 @@ export class AbsensiService {
         }
     }
 
+    async approveLemburan(absensiId: string, approvalData: ApprovalData): Promise<any> {
+        try {
+            const absensi = await this.absensiModel.findOne({ id: absensiId });
+            if (!absensi) {
+                return formatResponse('error', 404, 'Absensi not found');
+            }
+
+            const updateField: Record<string, any> = {};
+
+            switch (approvalData.role) {
+                case 'pjo':
+                    updateField.pjoApproval = approvalData;
+                    break;
+                case 'manager':
+                    updateField.managerApproval = approvalData;
+                    break;
+                case 'hrd':
+                    updateField.hrdApproval = approvalData;
+                    break;
+                default:
+                    return formatResponse('error', 400, 'Invalid role submitted');
+            }
+
+            const updatedAbsensi = await this.absensiModel.findOneAndUpdate(
+                { id: absensiId },
+                { $set: updateField },
+                { new: true }
+            );
+
+            return formatResponse('success', 200, 'Lemburan approval updated', updatedAbsensi);
+        } catch (error) {
+            return formatResponse('error', 500, 'Failed to update approval', error.message);
+        }
+    }
 
 }
 

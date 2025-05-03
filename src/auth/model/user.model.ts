@@ -13,7 +13,27 @@ export class User {
     password: string;
 
     @Prop({ required: true })
-    site: string;
+    position: string;
+
+    @Prop({ required: true })
+    department: {
+        uid: string;
+    };
+
+    @Prop({ required: true, unique: true })
+    nik: string;
+
+    @Prop({ required: true })
+    site: any; // Replace with your final site object type
+
+    @Prop({ required: true })
+    phone: string;
+
+    @Prop({ required: true })
+    salary: number;
+
+    @Prop({ required: true, enum: ['superior', 'staff', 'admin'] })
+    role: string;
 
     static async hashPassword(password: string): Promise<string> {
         return bcrypt.hash(password, 10);
@@ -23,5 +43,6 @@ export class User {
         return bcrypt.compare(plain, hashed);
     }
 }
+
 
 export const UserSchema = SchemaFactory.createForClass(User);

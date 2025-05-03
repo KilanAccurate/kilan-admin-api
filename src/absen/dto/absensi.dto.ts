@@ -1,4 +1,22 @@
-import { IsDate, IsOptional, IsString, IsObject } from 'class-validator';
+import { IsDate, IsOptional, IsString, IsObject, IsBoolean, IsIn } from 'class-validator';
+
+export class ApprovalData {
+    @IsString()
+    uid: string;
+
+    @IsDate()
+    approvedDate: Date;
+
+    @IsString()
+    userId: string;
+
+    @IsIn(['approved', 'rejected'])
+    approvalStatus: 'approved' | 'rejected';
+
+    @IsIn(['pjo', 'manager', 'hrd'])
+    role: 'pjo' | 'manager' | 'hrd';
+}
+
 
 export class CreateAbsensiDto {
     @IsDate()
@@ -43,4 +61,20 @@ export class CreateAbsensiDto {
     @IsOptional()
     @IsString()
     remarks?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isOverTime?: boolean;
+
+    @IsOptional()
+    @IsObject()
+    pjoApproval?: ApprovalData;
+
+    @IsOptional()
+    @IsObject()
+    managerApproval?: ApprovalData;
+
+    @IsOptional()
+    @IsObject()
+    hrdApproval?: ApprovalData;
 }

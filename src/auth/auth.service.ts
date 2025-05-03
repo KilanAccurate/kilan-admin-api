@@ -4,6 +4,8 @@ import { Model } from 'mongoose';
 import { User, UserDocument } from './model/user.model';
 import { generateJWT } from 'src/helper/jwt.helper';
 import { SiteLocationService } from 'src/location/site-location.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -11,7 +13,9 @@ export class AuthService {
 
     }
 
-    async login(fullName: string, password: string, site: string) {
+    async login(dto: LoginDto) {
+        const { fullName, password, site } = dto;
+
         try {
             const user = await this.userModel.findOne({ fullName });
 
@@ -19,12 +23,12 @@ export class AuthService {
                 return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
             }
 
-            // Verify if the site exists by ID
             const siteExists = await this.siteLocationService.get(user.site);
             if (!siteExists) {
                 return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
             }
-            if (user.site != site) {
+
+            if (user.site !== site) {
                 return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
             }
 
@@ -47,42 +51,58 @@ export class AuthService {
         }
     }
 
-    async signup(fullName: string, password: string, siteId: string) {
-        try {
-            const existingUser = await this.userModel.findOne({ fullName });
-            if (existingUser) {
-                return { status: 'error', statusCode: 400, message: 'User already exists' };
-            }
 
-            // Verify if the site exists by ID before allowing signup
-            const siteExists = await this.siteLocationService.get(siteId);
-            if (!siteExists) {
-                return { status: 'error', statusCode: 404, message: 'Site does not exist' };
-            }
+    async signup(dto: CreateUserDto) {
+        const { fullName, password, position, department, nik, site, phone, salary, role } = dto;
 
-            const hashedPassword = await User.hashPassword(password);
-            const newUser = new this.userModel({ fullName, password: hashedPassword, site: siteId });
-
-            await newUser.save();
-
-            return { status: 'success', statusCode: 201, message: 'Signup successful' };
-        } catch (error) {
-            console.error('Signup error:', error);
-            return { status: 'error', statusCode: 500, message: 'Internal server error' };
+        const existingUser = await this.userModel.findOne({ fullName });
+        if (existingUser) {
+            return { status: 'error', statusCode: 400, message: 'User already exists' };
         }
+
+        const siteExists = await this.siteLocationService.get(site?.uid || site);
+        if (!siteExists) {
+            return { status: 'error', statusCode: 404, message: 'Site does not exist' };
+        }
+
+        const hashedPassword = await User.hashPassword(password);
+
+        const newUser = new this.userModel({
+            fullName,
+            password: hashedPassword,
+            position,
+            department,
+            nik,
+            site,
+            phone,
+            salary,
+            role,
+        });
+
+        await newUser.save();
+
+        return { status: 'success', statusCode: 201, message: 'Signup successful' };
     }
 
-
-    async editAuth(id: string, fullName?: string, password?: string, site?: string) {
+    async editAuth(id: string, createUserDto: CreateUserDto) {
         try {
             const user = await this.userModel.findById(id);
             if (!user) {
                 return { status: 'error', statusCode: 404, message: 'User not found' };
             }
 
-            if (fullName) user.fullName = fullName;
-            if (password) user.password = await User.hashPassword(password);
-            if (site) user.site = site;
+            // Update only the fields that are provided in createUserDto
+            if (createUserDto.fullName) user.fullName = createUserDto.fullName;
+            if (createUserDto.password) user.password = await User.hashPassword(createUserDto.password);
+            if (createUserDto.site) user.site = createUserDto.site;
+
+            // If department, position, or other fields are provided, they will also be updated
+            if (createUserDto.position) user.position = createUserDto.position;
+            if (createUserDto.department) user.department = createUserDto.department;
+            if (createUserDto.nik) user.nik = createUserDto.nik;
+            if (createUserDto.phone) user.phone = createUserDto.phone;
+            if (createUserDto.salary) user.salary = createUserDto.salary;
+            if (createUserDto.role) user.role = createUserDto.role;
 
             await user.save();
 

@@ -9,11 +9,35 @@ export class AbsensiController {
     constructor(private readonly absensiService: AbsensiService) { }
 
     @UseGuards(JwtAuthGuard)
-    @Get()
-    async getUserAbsensiList(@Request() req) {
-        const accountId = req.user.userId; // Extract accountId from JWT
-        return this.absensiService.getUserAbsensiList(accountId);
+    @Post('list')
+    async getUserAbsensiList(
+        @Request() req,
+        @Body() body: {
+            startDate?: string;
+            endDate?: string;
+            type?: 'all' | 'lembur' | 'reguler';
+            page?: number;
+            limit?: number;
+        }
+    ) {
+        const accountId = req.user.userId;
+        const parsedStartDate = body.startDate ? new Date(body.startDate) : undefined;
+        const parsedEndDate = body.endDate ? new Date(body.endDate) : undefined;
+        const type = body.type ?? 'all';
+        const page = body.page ?? 1;
+        const limit = body.limit ?? 25;
+
+        return this.absensiService.getUserAbsensiList(
+            accountId,
+            parsedStartDate,
+            parsedEndDate,
+            type,
+            page,
+            limit
+        );
     }
+
+
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')

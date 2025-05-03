@@ -2,24 +2,22 @@ import { Controller, Post, Put, Delete, Body, Param, UseGuards, Request } from '
 import { AuthService } from './auth.service';
 import { formatResponse } from 'src/helper/response.helper';
 import { JwtAuthGuard } from './jwt.guard';
+import { CreateUserDto } from './dto/create-user.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
     @Post('signup')
-    signup(
-        @Body('fullName') fullName: string,
-        @Body('password') password: string,
-        @Body('site') site: string,
-    ) {
-        const result = this.authService.signup(fullName, password, site);
-        return result;
+    signup(@Body() dto: CreateUserDto) {
+        return this.authService.signup(dto);
     }
 
+
     @Post('login')
-    login(@Body('fullName') fullName: string, @Body('password') password: string, @Body('site') site: string) {
-        const result = this.authService.login(fullName, password, site);
+    login(@Body() dto: LoginDto) {
+        const result = this.authService.login(dto);
         return result;
     }
 
@@ -27,12 +25,10 @@ export class AuthController {
     @Put('edit')
     editAuth(
         @Request() req,
-        @Body('fullName') fullName?: string,
-        @Body('password') password?: string,
-        @Body('site') site?: string,
+        @Body() dto: CreateUserDto
     ) {
         const accountId = req.user.userId;
-        const result = this.authService.editAuth(accountId, fullName, password, site);
+        const result = this.authService.editAuth(accountId, dto);
         return result;
     }
 

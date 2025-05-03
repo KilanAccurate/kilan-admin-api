@@ -1,4 +1,5 @@
 import { model, Schema } from 'mongoose';
+import { ApprovalData } from '../dto/absensi.dto';
 
 
 const GeopifyLocationSchema = new Schema({
@@ -25,7 +26,6 @@ const GeopifyLocationSchema = new Schema({
     plusCodeShort: { type: String },
     placeId: { type: String },
 }, { _id: false });
-
 // Define Absensi schema
 export const AbsensiSchema = new Schema({
     id: { type: String, required: true },
@@ -41,9 +41,13 @@ export const AbsensiSchema = new Schema({
     startPosition: { type: GeopifyLocationSchema },
     endPosition: { type: GeopifyLocationSchema },
     remarks: { type: String },
+    isOverTime: { type: Boolean, default: false },
+    pjoApproval: { type: Object },
+    managerApproval: { type: Object },
+    hrdApproval: { type: Object },
 });
 
-// Define Absensi Type
+
 export interface Absensi {
     id: string;
     accountId: string;
@@ -58,10 +62,11 @@ export interface Absensi {
     startPosition?: typeof GeopifyLocationSchema;
     endPosition?: typeof GeopifyLocationSchema;
     remarks?: string;
+    isOverTime?: boolean;
+    pjoApproval?: ApprovalData;
+    managerApproval?: ApprovalData;
+    hrdApproval?: ApprovalData;
 }
 
-// Export Absensi Document Type
 export type AbsensiDocument = Absensi & Document;
-
-// Export Mongoose Model
 export const AbsensiModel = model<AbsensiDocument>('Absensi', AbsensiSchema);
