@@ -6,8 +6,6 @@ export type SiteLocationDocument = HydratedDocument<SiteLocation>;
 
 @Schema()
 export class SiteLocation {
-    @Prop({ required: true, unique: true })
-    id: string;
 
     @Prop({ required: true })
     siteName: string;

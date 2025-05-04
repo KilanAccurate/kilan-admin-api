@@ -10,6 +10,7 @@ import { AbsensiModule } from './absen/absen.module';
 import { CloudinaryProvider } from './cloudinary/cloudinary.provider';
 import { GlobalSettingModule } from './global/global-setting.module';
 import { CutiModule } from './cuti/cuti.module';
+import { FcmModule } from './firebase/fcm/fcm.module';
 
 @Module({
   controllers: [CloudinaryController],
@@ -22,6 +23,7 @@ import { CutiModule } from './cuti/cuti.module';
     AbsensiModule,
     GlobalSettingModule,
     CutiModule,
+    FcmModule,
   ],
   providers: [CloudinaryProvider, CloudinaryService],
 })

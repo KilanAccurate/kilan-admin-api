@@ -1,12 +1,16 @@
-import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors, Request, Get, Put, Param } from "@nestjs/common";
+import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors, Request, Get, Put, Param, Query } from "@nestjs/common";
 import { AbsensiService } from "./absen.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "src/auth/jwt.guard";
-import { CreateAbsensiDto } from "./dto/absensi.dto";
+import { ApprovalData, CreateAbsensiDto } from "./dto/absensi.dto";
 
 @Controller('absensi')
 export class AbsensiController {
     constructor(private readonly absensiService: AbsensiService) { }
+
+
+    // TODO: Add list absensi for admin
+    // TODO: Add list absensi detail for admin
 
     @UseGuards(JwtAuthGuard)
     @Post('list')
@@ -20,7 +24,34 @@ export class AbsensiController {
             limit?: number;
         }
     ) {
-        const accountId = req.user.userId;
+        const accountId = req.user._id;
+        const parsedStartDate = body.startDate ? new Date(body.startDate) : undefined;
+        const parsedEndDate = body.endDate ? new Date(body.endDate) : undefined;
+        const type = body.type ?? 'all';
+        const page = body.page ?? 1;
+        const limit = body.limit ?? 25;
+
+        return this.absensiService.getUserAbsensiList(
+            accountId,
+            parsedStartDate,
+            parsedEndDate,
+            type,
+            page,
+            limit
+        );
+    }
+
+    @Post('admin/list/:accountId')
+    async getAbsensiListForAdminByUser(
+        @Param('accountId') accountId: string,
+        @Body() body: {
+            startDate?: string;
+            endDate?: string;
+            type?: 'all' | 'lembur' | 'reguler';
+            page?: number;
+            limit?: number;
+        }
+    ) {
         const parsedStartDate = body.startDate ? new Date(body.startDate) : undefined;
         const parsedEndDate = body.endDate ? new Date(body.endDate) : undefined;
         const type = body.type ?? 'all';
@@ -38,6 +69,28 @@ export class AbsensiController {
     }
 
 
+    @Get('admin/absensi')
+    async getAbsensiListForAdmin(
+        @Query('startDate') startDateStr?: string,
+        @Query('endDate') endDateStr?: string,
+        @Query('type') type: 'all' | 'lembur' | 'reguler' = 'all',
+        @Query('page') page = '1',
+        @Query('limit') limit = '25',
+    ) {
+        const startDate = startDateStr ? new Date(startDateStr) : undefined;
+        const endDate = endDateStr ? new Date(endDateStr) : undefined;
+
+        const pageNum = parseInt(page as string, 10) || 1;
+        const limitNum = parseInt(limit as string, 10) || 25;
+
+        return this.absensiService.getAbsensiListForAdmin(
+            startDate,
+            endDate,
+            type,
+            pageNum,
+            limitNum,
+        );
+    }
 
     @UseGuards(JwtAuthGuard)
     @Get(':id')
@@ -56,7 +109,7 @@ export class AbsensiController {
         @Body() absensiDto: CreateAbsensiDto,
         @UploadedFile() startImgFile?: Express.Multer.File,
     ) {
-        const accountId = req.user.userId; // Extract accountId from JWT
+        const accountId = req.user._id; // Extract accountId from JWT
         return this.absensiService.absenMasuk(accountId, absensiDto, startImgFile);
     }
 
@@ -73,5 +126,12 @@ export class AbsensiController {
         return this.absensiService.absenKeluar(absensiDto, endImgFile, id);
     }
 
+    @Put('approval/:absensiId')
+    async approveLembur(
+        @Param('absensiId') absensiId: string,
+        @Body() approvalData: ApprovalData,
+    ) {
+        return this.absensiService.actionLemburan(absensiId, approvalData);
+    }
 
 }

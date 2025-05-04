@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsObject, IsPhoneNumber, IsNumber, IsIn } from 'class-validator';
+import { Role } from '../model/user.model';
 
 export class CreateUserDto {
     @IsString()
@@ -13,26 +14,26 @@ export class CreateUserDto {
     @IsNotEmpty()
     position: string;
 
-    @IsObject()
+    @IsString()
     @IsNotEmpty()
-    department: { uid: string, departmentName: string }; // Department is directly an object with uid and departmentName
+    department: string;
 
     @IsString()
     @IsNotEmpty()
     nik: string;
 
-    @IsObject()
+    @IsString()
     @IsNotEmpty()
-    site: any;
+    site: string;
 
     @IsString()
     @IsNotEmpty()
-    @IsPhoneNumber('ID') // or use regex if needed
+    @IsPhoneNumber(null) // or use regex if needed
     phone: string;
 
     @IsNumber()
     salary: number;
 
-    @IsIn(['superior', 'staff', 'admin'])
-    role: string;
+    @IsIn(Object.values(Role))
+    role: Role;
 }

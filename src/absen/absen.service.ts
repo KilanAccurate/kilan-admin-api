@@ -2,21 +2,29 @@ import { Injectable, UseGuards } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { formatResponse } from 'src/location/site-location.service';
+import { formatResponse, SiteLocationService } from 'src/location/site-location.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Absensi, AbsensiDocument } from './schemas/absensi.schema';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { ApprovalData, CreateAbsensiDto } from './dto/absensi.dto';
 import { Media } from 'src/cloudinary/schemas/media.schema';
+import { Role, User, UserDocument } from 'src/auth/model/user.model';
+import { FcmService } from 'src/firebase/fcm/fcm.service';
 
 @Injectable()
 export class AbsensiService {
     constructor(
         @InjectModel('Absensi') private absensiModel: Model<AbsensiDocument>,
         @InjectModel('Media') private mediaModel: Model<Media>,
+        @InjectModel(User.name) private userModel: Model<UserDocument>,
         private cloudinaryService: CloudinaryService,
+        private readonly fcmService: FcmService,
     ) { }
 
+
+    // TODO: Make API to send FCM if user open the APP and if the regular absensi is more than certain hours it will trigger the API from flutter but from BE it will send notification to the user
+    // Additional: After user open the app, it will getUserAbsensiList then check the latest absensi status. if status is not end then trigger the API to send notification to the user
+    // More Addition: If the lemburan is approved and the user still not start the lembur, need API also to send notification to the user to remind to start the lembur
     async getUserAbsensiList(
         accountId: string,
         startDate?: Date,
@@ -65,6 +73,54 @@ export class AbsensiService {
         }
     }
 
+    async getAbsensiListForAdmin(
+        startDate?: Date,
+        endDate?: Date,
+        type: 'all' | 'lembur' | 'reguler' = 'all',
+        page = 1,
+        limit = 25,
+    ): Promise<any> {
+        try {
+            const query: any = {};
+
+            // Date range filter
+            if (startDate && endDate) {
+                query.startDate = { $gte: startDate, $lte: endDate };
+            } else if (startDate) {
+                query.startDate = { $gte: startDate };
+            } else if (endDate) {
+                query.startDate = { $lte: endDate };
+            }
+
+            // Type filter
+            if (type === 'lembur') {
+                query.isOverTime = true;
+            } else if (type === 'reguler') {
+                query.isOverTime = false;
+            }
+
+            // Pagination
+            const skip = (page - 1) * limit;
+            const [totalCount, items] = await Promise.all([
+                this.absensiModel.countDocuments(query),
+                this.absensiModel.find(query).skip(skip).limit(limit).lean(),
+            ]);
+
+            const isMax = skip + items.length >= totalCount;
+
+            return formatResponse('success', 200, 'Absensi list retrieved successfully', {
+                items,
+                page,
+                limit,
+                totalCount,
+                isMax,
+            });
+        } catch (error) {
+            return formatResponse('error', 500, 'Failed to retrieve absensi list', error.message);
+        }
+    }
+
+
 
 
     async getUserAbsensi(accountId: string, absensiId: string): Promise<any> {
@@ -84,9 +140,15 @@ export class AbsensiService {
         absensiDto: CreateAbsensiDto,
         startImgFile?: Express.Multer.File
     ): Promise<any> {
+        // Handle lemburan flow so that if user submit absensi masuk it will trigger FCM to send notification to admin
         try {
             let startImgId: string | undefined;
             let startImgUrl: string | undefined;
+
+            const user = await this.userModel.findById(accountId);
+            if (!user) {
+                return formatResponse('error', 404, 'User not found');
+            }
 
             // If there is an image, upload it and store in Media collection
             if (startImgFile) {
@@ -136,7 +198,54 @@ export class AbsensiService {
                 startImgUrl,
             });
 
+            // if lemburan send FCM to admin
+
             const savedAbsensi = await newAbsensi.save();
+
+            let pjoList = await this.userModel.find(
+                { 'site._id': user.site._id, role: Role.PJO },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
+
+            let managerList = await this.userModel.find(
+                { role: Role.Manager },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
+
+            let hrdList = await this.userModel.find(
+                { 'site._id': user.site._id, role: Role.HRD },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
+
+            let adminList = await this.userModel.find(
+                { role: Role.Admin },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
+
+            let combinedSuperior = [
+                ...pjoList,
+                ...managerList,
+                ...hrdList,
+                ...adminList,
+            ];
+
+
+            if (absensiDto.isOverTime) {
+                await Promise.all(combinedSuperior.map(superior =>
+                    this.fcmService.sendNotification(
+                        superior.fcmToken,
+                        `Pengajuan Lembur dari ${user.fullName}`,
+                        `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
+                        {
+                            'absensiId': savedAbsensi._id.toString(),
+                            'route': 'detail-absensi',
+                            'type': 'lembur',
+                            'userId': user._id.toString(),
+                        },
+                    )
+                ));
+            }
+
             return formatResponse('success', 201, 'Absensi added successfully', savedAbsensi);
         } catch (error) {
             return formatResponse('error', 500, 'Failed to add absensi', error.message);
@@ -212,11 +321,16 @@ export class AbsensiService {
         }
     }
 
-    async approveLemburan(absensiId: string, approvalData: ApprovalData): Promise<any> {
+    async actionLemburan(absensiId: string, approvalData: ApprovalData): Promise<any> {
         try {
             const absensi = await this.absensiModel.findOne({ id: absensiId });
             if (!absensi) {
                 return formatResponse('error', 404, 'Absensi not found');
+            }
+
+            const user = await this.userModel.findById(absensi.accountId);
+            if (!user) {
+                return formatResponse('error', 404, 'User not found');
             }
 
             const updateField: Record<string, any> = {};
@@ -240,6 +354,41 @@ export class AbsensiService {
                 { $set: updateField },
                 { new: true }
             );
+
+            if (updatedAbsensi.isOverTime) {
+                let stats = approvalData.approvalStatus;
+                this.fcmService.sendNotification(
+                    user.fcmToken,
+                    `Pengajuan Lembur anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+                    `Hai ${user.fullName}, pengajuan lembur anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role} ${approvalData.role === Role.PJO ? 'permohonan lemburan akan dilanjutkan ke manager' : 'selamat bekerja!'}.`,
+                    {
+                        'absensiId': updateField._id.toString(),
+                        'route': 'detail-absensi',
+                        'type': 'lembur',
+                        'userId': user._id.toString(),
+                        'status': approvalData.approvalStatus,
+                    },
+                );
+                if (approvalData.role === Role.PJO && approvalData.approvalStatus === 'approved') {
+                    let managerList = await this.userModel.find(
+                        { role: Role.Manager },
+                        { fullName: 1, role: 1, fcmToken: 1 }
+                    );
+                    await Promise.all(managerList.map(superior =>
+                        this.fcmService.sendNotification(
+                            superior.fcmToken,
+                            `Pengajuan Lembur dari ${user.fullName}`,
+                            `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
+                            {
+                                'absensiId': updatedAbsensi._id.toString(),
+                                'route': 'detail-absensi',
+                                'type': 'lembur',
+                                'userId': user._id.toString(),
+                            },
+                        )
+                    ));
+                }
+            }
 
             return formatResponse('success', 200, 'Lemburan approval updated', updatedAbsensi);
         } catch (error) {

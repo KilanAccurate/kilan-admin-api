@@ -10,6 +10,7 @@ import { CloudinaryProvider } from "src/cloudinary/cloudinary.provider";
 import { MediaSchema } from "src/cloudinary/schemas/media.schema";
 import { JwtModule } from "@nestjs/jwt/dist/jwt.module";
 import { ConfigModule } from "@nestjs/config";
+import { FcmModule } from "src/firebase/fcm/fcm.module";
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { ConfigModule } from "@nestjs/config";
             secret: process.env.JWT_SECRET, // Ensure this is set correctly
             signOptions: { expiresIn: '1h' }, // Adjust expiry as needed
         }),
+        FcmModule,
     ],
     controllers: [AbsensiController],
     providers: [AbsensiService, JwtStrategy, CloudinaryProvider],

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsBoolean } from 'class-validator';
 
 export class LoginDto {
     @IsString()
@@ -12,4 +12,10 @@ export class LoginDto {
     @IsString()
     @IsNotEmpty()
     site: string;
+
+    @IsString()
+    fcmToken: string;
+
+    @IsBoolean()
+    isAdmin: boolean;
 }

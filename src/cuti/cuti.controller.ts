@@ -7,10 +7,10 @@ import { CreateCutiDto } from './dto/create-cuti.dto';
 import { ApprovalData } from 'src/absen/dto/absensi.dto';
 
 @Controller('cuti')
-@UseGuards(JwtAuthGuard)
 export class CutiController {
     constructor(private readonly cutiService: CutiService) { }
 
+    @UseGuards(JwtAuthGuard)
     @Post()
     async applyCuti(
         @Request() req,
@@ -20,6 +20,7 @@ export class CutiController {
         return this.cutiService.applyCuti(accountId, dto);
     }
 
+    @UseGuards(JwtAuthGuard)
     @Post('list')
     async getUserCutiList(
         @Request() req,
@@ -31,12 +32,34 @@ export class CutiController {
         return this.cutiService.getUserCutiList(accountId, status, page, limit);
     }
 
-
-    @Patch('approve/:id')
+    @UseGuards(JwtAuthGuard)
+    @Patch('action/:id')
     async approveCuti(
         @Param('id') id: string,
         @Body() approvalData: ApprovalData,
     ) {
-        return this.cutiService.approveCuti(id, approvalData);
+        return this.cutiService.actionCuti(id, approvalData);
     }
+
+    @Post('admin/list')
+    async getAllCutiList(
+        @Body('status') status: 'pending' | 'approved' | 'rejected' = 'pending',
+        @Body('page') page = 1,
+        @Body('limit') limit = 25,
+    ) {
+        return this.cutiService.getCutiList(status, page, limit);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('detail/:id')
+    async getUserCutiDetail(@Request() req, @Param('id') id: string) {
+        const accountId = req.user.userId;
+        return this.cutiService.getUserCutiDetail(accountId, id);
+    }
+
+    @Get('admin/detail/:id')
+    async getAdminCutiDetail(@Param('id') id: string) {
+        return this.cutiService.getCutiDetail(id);
+    }
+
 }

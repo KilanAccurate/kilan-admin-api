@@ -1,9 +1,11 @@
 import * as jwt from 'jsonwebtoken';
+import { UserDocument } from 'src/auth/model/user.model';
 
-export const generateJWT = (userId: string, fullName: string, siteId: string): string => {
-    const payload = { userId, fullName, siteId }; // Include the token in the payload
-    const secret = process.env.JWT_SECRET;  // Replace with your environment variable or key management
-    const options: jwt.SignOptions = { expiresIn: '1h' }; // Set expiration time for the JWT token
+export const generateJWT = (user: UserDocument): string => {
+    const { password, ...userWithoutPassword } = user.toObject();
 
-    return jwt.sign(payload, secret, options);
+    const secret = process.env.JWT_SECRET;
+    const options: jwt.SignOptions = { expiresIn: '1h' };
+
+    return jwt.sign(userWithoutPassword, secret, options);
 };

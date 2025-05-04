@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserDocument } from './model/user.model';
+import { Role, User, UserDocument } from './model/user.model';
 import { generateJWT } from 'src/helper/jwt.helper';
 import { SiteLocationService } from 'src/location/site-location.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -13,8 +13,104 @@ export class AuthService {
 
     }
 
+    async listUsers(query: {
+        search?: string;
+        role?: string;
+        site?: string;
+        sortBy?: 'asc' | 'desc';
+        page?: number;
+        limit?: number;
+    }) {
+        try {
+            const {
+                search,
+                role,
+                site,
+                sortBy = 'asc',
+                page = 1,
+                limit = 10,
+            } = query;
+
+            const filter: any = {};
+
+            if (search) {
+                filter.fullName = { $regex: search, $options: 'i' };
+            }
+
+            if (role) {
+                filter.role = role;
+            }
+
+            if (site) {
+                filter['site._id'] = site;
+            }
+
+            const sortOption = sortBy === 'asc' ? 1 : -1;
+
+            const skip = (page - 1) * limit;
+
+            const [users, total] = await Promise.all([
+                this.userModel
+                    .find(filter)
+                    .sort({ createdAt: sortOption })
+                    .skip(skip)
+                    .limit(limit)
+                    .lean(),
+                this.userModel.countDocuments(filter),
+            ]);
+
+            return {
+                status: 'success',
+                statusCode: 200,
+                message: 'Users fetched successfully',
+                data: users,
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    isMax: page * limit >= total,
+                },
+            };
+        } catch (error) {
+            console.error('List Users error:', error);
+            return {
+                status: 'error',
+                statusCode: 500,
+                message: 'Internal server error',
+            };
+        }
+    }
+
+    async getUserById(userId: string) {
+        try {
+            const user = await this.userModel.findById(userId).lean();
+
+            if (!user) {
+                return {
+                    status: 'error',
+                    statusCode: 404,
+                    message: 'User not found',
+                };
+            }
+
+            return {
+                status: 'success',
+                statusCode: 200,
+                message: 'User fetched successfully',
+                data: user,
+            };
+        } catch (error) {
+            console.error('Get User by ID error:', error);
+            return {
+                status: 'error',
+                statusCode: 500,
+                message: 'Internal server error',
+            };
+        }
+    }
+
     async login(dto: LoginDto) {
-        const { fullName, password, site } = dto;
+        const { fullName, password, site, isAdmin, fcmToken } = dto; // Add fcmToken in login DTO
 
         try {
             const user = await this.userModel.findOne({ fullName });
@@ -23,16 +119,34 @@ export class AuthService {
                 return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
             }
 
-            const siteExists = await this.siteLocationService.get(user.site);
-            if (!siteExists) {
+            const siteExists = await this.siteLocationService.get(site);
+            if (!siteExists.data) {
                 return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
             }
 
-            if (user.site !== site) {
+            if (user.site._id.toString() !== site) {
                 return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
             }
 
-            const token = generateJWT(user.id, user.fullName, user.site);
+            // Update FCM token in DB if provided
+            if (fcmToken) {
+                user.fcmToken = fcmToken;
+                await user.save();
+            }
+
+            // Check admin access rights
+            if (
+                isAdmin === true &&
+                ![Role.PJO, Role.Admin, Role.Manager, Role.HRD].includes(user.role)
+            ) {
+                return {
+                    status: 'error',
+                    statusCode: 403,
+                    message: 'You do not have admin privileges',
+                };
+            }
+
+            const token = generateJWT(user);
 
             return {
                 status: 'success',
@@ -40,9 +154,7 @@ export class AuthService {
                 message: 'Login successful',
                 data: {
                     token,
-                    userId: user.id,
-                    fullName: user.fullName,
-                    siteId: user.site,
+                    ...user.toObject(),
                 },
             };
         } catch (error) {
@@ -50,7 +162,6 @@ export class AuthService {
             return { status: 'error', statusCode: 500, message: 'Internal server error' };
         }
     }
-
 
     async signup(dto: CreateUserDto) {
         const { fullName, password, position, department, nik, site, phone, salary, role } = dto;
@@ -60,8 +171,8 @@ export class AuthService {
             return { status: 'error', statusCode: 400, message: 'User already exists' };
         }
 
-        const siteExists = await this.siteLocationService.get(site?.uid || site);
-        if (!siteExists) {
+        const siteExists = await this.siteLocationService.get(site);
+        if (!siteExists.data) {
             return { status: 'error', statusCode: 404, message: 'Site does not exist' };
         }
 
@@ -73,7 +184,7 @@ export class AuthService {
             position,
             department,
             nik,
-            site,
+            site: siteExists.data,
             phone,
             salary,
             role,
@@ -91,10 +202,15 @@ export class AuthService {
                 return { status: 'error', statusCode: 404, message: 'User not found' };
             }
 
+            const siteExists = await this.siteLocationService.get(createUserDto.site);
+            if (!siteExists.data) {
+                return { status: 'error', statusCode: 404, message: 'Site does not exist' };
+            }
+
             // Update only the fields that are provided in createUserDto
             if (createUserDto.fullName) user.fullName = createUserDto.fullName;
             if (createUserDto.password) user.password = await User.hashPassword(createUserDto.password);
-            if (createUserDto.site) user.site = createUserDto.site;
+            if (createUserDto.site) user.site = siteExists.data;
 
             // If department, position, or other fields are provided, they will also be updated
             if (createUserDto.position) user.position = createUserDto.position;
@@ -135,5 +251,23 @@ export class AuthService {
             return { status: 'error', statusCode: 500, message: 'Internal server error' };
         }
     }
+
+    async updateFcmToken(userId: string, fcmToken: string) {
+        try {
+            const user = await this.userModel.findById(userId);
+            if (!user) {
+                throw new NotFoundException('User not found');
+            }
+
+            user.fcmToken = fcmToken;
+            await user.save();
+
+            return { status: 'success', statusCode: 200, message: 'FCM Token updated successfully' };
+        } catch (error) {
+            console.error('Update FCM token error:', error);
+            return { status: 'error', statusCode: 500, message: 'Internal server error' };
+        }
+    }
+
 
 }

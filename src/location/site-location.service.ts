@@ -37,10 +37,10 @@ export class SiteLocationService {
       if (locations) {
         return formatResponse('success', 200, 'Site found', locations);
       } else {
-        return formatResponse('error', 201, 'Failed to retrieve site locations', "Site not found");
+        return formatResponse('error', 201, 'Failed to retrieve site locations');
       }
     } catch (error) {
-      return formatResponse('error', 500, 'Failed to retrieve site locations', error.message);
+      return formatResponse('error', 500, error.message);
     }
   }
 
@@ -50,10 +50,10 @@ export class SiteLocationService {
       if (locations) {
         return formatResponse('success', 200, 'Site found', locations);
       } else {
-        return formatResponse('error', 201, 'Failed to retrieve site locations', "Site not found");
+        return formatResponse('error', 201, "Site not found");
       }
     } catch (error) {
-      return formatResponse('error', 500, 'Failed to retrieve site locations', error.message);
+      return formatResponse('error', 500, error.message);
     }
   }
 
@@ -70,7 +70,7 @@ export class SiteLocationService {
       const savedLocation = await newLocation.save();
       return formatResponse('success', 201, 'Site location registered successfully', savedLocation);
     } catch (error) {
-      return formatResponse('error', 500, 'Failed to register site location', error.message);
+      return formatResponse('error', 500, error.message);
     }
   }
 }

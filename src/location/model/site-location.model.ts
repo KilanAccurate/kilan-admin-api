@@ -4,6 +4,6 @@ export class LatLng {
 }
 
 export class SiteLocation {
-    id: string;
+    _id: string;
     coordinates: LatLng[];
 }
