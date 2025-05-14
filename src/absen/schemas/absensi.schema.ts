@@ -1,5 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { ApprovalData } from '../dto/absensi.dto';
+import { SiteLocation, SiteLocationSchema } from 'src/location/schemas/site-location.schema';
 
 
 const GeopifyLocationSchema = new Schema({
@@ -31,6 +32,7 @@ export const AbsensiSchema = new Schema({
     id: { type: String, required: true },
     accountId: { type: String, required: true },
     startDate: { type: Date },
+    requestedDate: { type: Date },
     endDate: { type: Date },
     startImgUrl: { type: String },
     startImgId: { type: String },
@@ -44,14 +46,18 @@ export const AbsensiSchema = new Schema({
     isOverTime: { type: Boolean, default: false },
     pjoApproval: { type: Object },
     managerApproval: { type: Object },
+    otType: { type: String },
     hrdApproval: { type: Object },
+    detectedSite: { type: String }
+}, {
+    timestamps: true,
 });
-
 
 export interface Absensi {
     id: string;
     accountId: string;
     startDate?: Date;
+    requestedDate?: Date;
     endDate?: Date;
     startImgUrl?: string;
     startImgId?: string;
@@ -65,7 +71,9 @@ export interface Absensi {
     isOverTime?: boolean;
     pjoApproval?: ApprovalData;
     managerApproval?: ApprovalData;
+    otType?: string;
     hrdApproval?: ApprovalData;
+    detectedSite?: string;
 }
 
 export type AbsensiDocument = Absensi & Document;

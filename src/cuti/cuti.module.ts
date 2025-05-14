@@ -8,13 +8,16 @@ import { JwtStrategy } from 'src/auth/jwt.strategy';
 import { AuthService } from 'src/auth/auth.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { FcmModule } from 'src/firebase/fcm/fcm.module';
+import { User, UserSchema } from 'src/auth/model/user.model';
 
 @Module({
-    imports: [MongooseModule.forFeature([{ name: 'Cuti', schema: CutiModel.schema },],),
-    JwtModule.register({
-        secret: process.env.JWT_SECRET, // Ensure this is set correctly
-        signOptions: { expiresIn: '1h' }, // Adjust expiry as needed
-    }),
+    imports: [
+        MongooseModule.forFeature([{ name: 'Cuti', schema: CutiModel.schema }]),
+        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+        JwtModule.register({
+            secret: process.env.JWT_SECRET, // Ensure this is set correctly
+            signOptions: { expiresIn: '1h' }, // Adjust expiry as needed
+        }),
         AuthModule,
         FcmModule,
     ],

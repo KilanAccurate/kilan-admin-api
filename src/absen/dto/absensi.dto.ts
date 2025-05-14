@@ -1,4 +1,6 @@
-import { IsDate, IsOptional, IsString, IsObject, IsBoolean, IsIn } from 'class-validator';
+import { IsDate, IsOptional, IsString, IsObject, IsBoolean, IsIn, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { SiteLocation } from 'src/location/schemas/site-location.schema';
 
 export class ApprovalData {
     @IsString()
@@ -17,7 +19,6 @@ export class ApprovalData {
     role: 'pjo' | 'manager' | 'hrd';
 }
 
-
 export class CreateAbsensiDto {
     @IsDate()
     startDate: Date;
@@ -25,6 +26,10 @@ export class CreateAbsensiDto {
     @IsOptional()
     @IsDate()
     endDate?: Date;
+
+    @IsOptional()
+    @IsDate()
+    requestedDate?: Date;
 
     @IsOptional()
     @IsString()
@@ -77,4 +82,12 @@ export class CreateAbsensiDto {
     @IsOptional()
     @IsObject()
     hrdApproval?: ApprovalData;
+
+    @IsOptional()
+    @IsString()
+    detectedSite?: string;
+
+    @IsOptional()
+    @IsString()
+    otType?: string;
 }

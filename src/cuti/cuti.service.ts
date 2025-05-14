@@ -87,45 +87,45 @@ export class CutiService {
                 ...createCutiDto,
             });
             const saved = await newCuti.save();
-            let pjoList = await this.userModel.find(
-                { 'site._id': user.site._id, role: Role.PJO },
-                { fullName: 1, role: 1, fcmToken: 1 }
-            );
+            // let pjoList = await this.userModel.find(
+            //     { 'site._id': user.site._id, role: Role.PJO },
+            //     { fullName: 1, role: 1, fcmToken: 1 }
+            // );
 
-            let managerList = await this.userModel.find(
-                { role: Role.Manager },
-                { fullName: 1, role: 1, fcmToken: 1 }
-            );
+            // let managerList = await this.userModel.find(
+            //     { role: Role.Manager },
+            //     { fullName: 1, role: 1, fcmToken: 1 }
+            // );
 
-            let hrdList = await this.userModel.find(
-                { 'site._id': user.site._id, role: Role.HRD },
-                { fullName: 1, role: 1, fcmToken: 1 }
-            );
+            // let hrdList = await this.userModel.find(
+            //     { 'site._id': user.site._id, role: Role.HRD },
+            //     { fullName: 1, role: 1, fcmToken: 1 }
+            // );
 
-            let adminList = await this.userModel.find(
-                { role: Role.Admin },
-                { fullName: 1, role: 1, fcmToken: 1 }
-            );
+            // let adminList = await this.userModel.find(
+            //     { role: Role.Admin },
+            //     { fullName: 1, role: 1, fcmToken: 1 }
+            // );
 
-            let combinedSuperior = [
-                ...pjoList,
-                ...managerList,
-                ...hrdList,
-                ...adminList,
-            ];
-            await Promise.all(combinedSuperior.map(superior =>
-                this.fcmService.sendNotification(
-                    superior.fcmToken,
-                    `Pengajuan Lembur dari ${user.fullName}`,
-                    `Hai ${superior.fullName}, ${user.fullName} telah mengajukan cuti.`,
-                    {
-                        'cutiId': saved._id.toString(),
-                        'route': 'detail-cuti',
-                        'type': 'cuti',
-                        'userId': user._id.toString(),
-                    },
-                )
-            ));
+            // let combinedSuperior = [
+            //     ...pjoList,
+            //     ...managerList,
+            //     ...hrdList,
+            //     ...adminList,
+            // ];
+            // await Promise.all(combinedSuperior.map(superior =>
+            //     this.fcmService.sendNotification(
+            //         superior.fcmToken,
+            //         `Pengajuan Lembur dari ${user.fullName}`,
+            //         `Hai ${superior.fullName}, ${user.fullName} telah mengajukan cuti.`,
+            //         {
+            //             'cutiId': saved._id.toString(),
+            //             'route': 'detail-cuti',
+            //             'type': 'cuti',
+            //             'userId': user._id.toString(),
+            //         },
+            //     )
+            // ));
 
             return formatResponse('success', 201, 'Cuti applied successfully', saved);
         } catch (error) {
@@ -135,7 +135,7 @@ export class CutiService {
 
     async getUserCutiList(
         accountId: string,
-        status: 'pending' | 'approved' | 'rejected' = 'pending',
+        status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         page = 1,
         limit = 25
     ): Promise<any> {
@@ -152,14 +152,22 @@ export class CutiService {
                     query['pjoApproval.approvalStatus'] = 'rejected';
                     break;
                 case 'pending':
-                default:
                     query['pjoApproval'] = { $exists: false };
+                    break;
+                case 'all':
+                default:
+                    // do not modify query
+                    break;
             }
 
             const skip = (page - 1) * limit;
             const [totalCount, items] = await Promise.all([
                 this.cutiModel.countDocuments(query),
-                this.cutiModel.find(query).skip(skip).limit(limit).lean(),
+                this.cutiModel.find(query)
+                    .sort({ updatedAt: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .lean(),
             ]);
 
             const isMax = skip + items.length >= totalCount;
@@ -175,6 +183,7 @@ export class CutiService {
             return formatResponse('error', 500, 'Failed to retrieve cuti list', error.message);
         }
     }
+
 
     async getUserCutiDetail(accountId: string, cutiId: string): Promise<any> {
         try {
@@ -196,7 +205,7 @@ export class CutiService {
         // TODO: Handle FCM approval send notification to user if approved/rejected
         try {
 
-            const cuti = await this.cutiModel.findOne({ id: cutiId });
+            const cuti = await this.cutiModel.findById(cutiId);
             const user = await this.userModel.findById(cuti?.accountId);
             if (!user) {
                 return formatResponse('error', 404, 'User not found');
@@ -217,46 +226,50 @@ export class CutiService {
                     return formatResponse('error', 400, 'Invalid role submitted');
             }
 
-            const updated = await cuti.save();
+            const updated = await this.cutiModel.findByIdAndUpdate(
+                cutiId,
+                { $set: updateField },
+                { new: true }
+            );
 
             let stats = approvalData.approvalStatus;
-            this.fcmService.sendNotification(
-                user.fcmToken,
-                `Pengajuan Cuti anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-                `Hai ${user.fullName}, pengajuan cuti anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
-                {
-                    'cutiId': updateField._id.toString(),
-                    'route': 'detail-cuti',
-                    'type': 'cuti',
-                    'userId': user._id.toString(),
-                    'status': approvalData.approvalStatus,
-                },
-            );
-            if (approvalData.role === 'pjo') {
-                let managerList = await this.userModel.find(
-                    { role: Role.Manager },
-                    { fullName: 1, role: 1, fcmToken: 1 }
-                );
-                let hrdList = await this.userModel.find(
-                    { role: Role.HRD },
-                    { fullName: 1, role: 1, fcmToken: 1 }
-                );
+            // this.fcmService.sendNotification(
+            //     user.fcmToken,
+            //     `Pengajuan Cuti anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+            //     `Hai ${user.fullName}, pengajuan cuti anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
+            //     {
+            //         'cutiId': updateField._id.toString(),
+            //         'route': 'detail-cuti',
+            //         'type': 'cuti',
+            //         'userId': user._id.toString(),
+            //         'status': approvalData.approvalStatus,
+            //     },
+            // );
+            // if (approvalData.role === 'pjo') {
+            //     let managerList = await this.userModel.find(
+            //         { role: Role.Manager },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
+            //     let hrdList = await this.userModel.find(
+            //         { role: Role.HRD },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
 
-                await Promise.all([...managerList, ...hrdList].map(superior =>
-                    this.fcmService.sendNotification(
-                        superior.fcmToken,
-                        `Pengajuan Cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-                        `Hai ${superior.fullName}, pengajuan cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
-                        {
-                            'cutiId': updateField._id.toString(),
-                            'route': 'detail-cuti',
-                            'type': 'cuti',
-                            'userId': user._id.toString(),
-                            'status': approvalData.approvalStatus,
-                        },
-                    )
-                ));
-            }
+            //     await Promise.all([...managerList, ...hrdList].map(superior =>
+            //         this.fcmService.sendNotification(
+            //             superior.fcmToken,
+            //             `Pengajuan Cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+            //             `Hai ${superior.fullName}, pengajuan cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
+            //             {
+            //                 'cutiId': updateField._id.toString(),
+            //                 'route': 'detail-cuti',
+            //                 'type': 'cuti',
+            //                 'userId': user._id.toString(),
+            //                 'status': approvalData.approvalStatus,
+            //             },
+            //         )
+            //     ));
+            // }
             return formatResponse('success', 200, 'Cuti approval updated', updated);
         } catch (error) {
             return formatResponse('error', 500, 'Failed to approve cuti', error.message);

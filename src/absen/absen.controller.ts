@@ -126,6 +126,20 @@ export class AbsensiController {
         return this.absensiService.absenKeluar(absensiDto, endImgFile, id);
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Put('lembur/:id')
+    @UseInterceptors(FileInterceptor('startImgFile'))
+    async absenLembur(
+        @Param('id') id: string,
+        @Request() req, // Extract user from JWT
+        @Body() absensiDto: CreateAbsensiDto,
+        @UploadedFile() startImgFile?: Express.Multer.File,
+    ) {
+        console.log(absensiDto)
+        const accountId = req.user._id;
+        return this.absensiService.absenLembur(accountId, absensiDto, id, startImgFile);
+    }
+
     @Put('approval/:absensiId')
     async approveLembur(
         @Param('absensiId') absensiId: string,

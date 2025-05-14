@@ -2,10 +2,16 @@
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { NotificationDocument, NotificationFirebase } from './model/notification.model';
 
 @Injectable()
 export class FcmService {
-    constructor() {
+    constructor(
+        @InjectModel(NotificationFirebase.name)
+        private notificationModel: Model<NotificationDocument>,
+    ) {
         const serviceAccountPath = path.resolve(
             __dirname,
             '../../../firebase-adminsdk.json',
@@ -22,16 +28,18 @@ export class FcmService {
         token: string,
         title: string,
         body: string,
-        data?: { [key: string]: string },
+        data: Record<string, string> = {},
     ) {
         const message: admin.messaging.Message = {
             notification: {
                 title,
                 body,
             },
-            data: data || {},
+            data,
             token,
         };
+
+        await this.notificationModel.create({ token, title, body, data });
 
         try {
             const response = await admin.messaging().send(message);
@@ -40,5 +48,4 @@ export class FcmService {
             return { success: false, error };
         }
     }
-
 }

@@ -1,7 +1,6 @@
 import { Type } from "class-transformer";
-import { IsDate, IsEnum, IsString, IsArray, ValidateNested, IsNumber, IsOptional } from "class-validator";
+import { IsDate, IsEnum, IsString, IsArray, IsNumber, IsOptional } from "class-validator";
 import { ApprovalData } from "src/absen/dto/absensi.dto";
-import { User } from "src/auth/model/user.model";
 
 export class CreateCutiDto {
     @IsDate()
@@ -23,9 +22,8 @@ export class CreateCutiDto {
     tujuanCuti: string;
 
     @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => User)
-    pekerjaanDiserahkanPada: User[];
+    @IsString({ each: true })
+    pekerjaanDiserahkanPada: string[];
 
     @IsString()
     transport: string;
@@ -37,7 +35,6 @@ export class CreateCutiDto {
     keterangan: string;
 
     @IsOptional()
-    @ValidateNested()
     @Type(() => ApprovalData)
     status?: ApprovalData;
 }

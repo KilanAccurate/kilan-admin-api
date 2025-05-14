@@ -11,12 +11,16 @@ import { MediaSchema } from "src/cloudinary/schemas/media.schema";
 import { JwtModule } from "@nestjs/jwt/dist/jwt.module";
 import { ConfigModule } from "@nestjs/config";
 import { FcmModule } from "src/firebase/fcm/fcm.module";
+import { User, UserSchema } from "src/auth/model/user.model";
+import { SiteLocation, SiteLocationSchema } from "src/location/schemas/site-location.schema";
 
 @Module({
     imports: [
         ConfigModule.forRoot(),
         MongooseModule.forFeature([{ name: 'Absensi', schema: AbsensiSchema }],),
         MongooseModule.forFeature([{ name: 'Media', schema: MediaSchema }]),
+        MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+        MongooseModule.forFeature([{ name: SiteLocation.name, schema: SiteLocationSchema }]),
         CloudinaryModule,
         JwtModule.register({
             secret: process.env.JWT_SECRET, // Ensure this is set correctly

@@ -16,7 +16,7 @@ export class CutiController {
         @Request() req,
         @Body() dto: CreateCutiDto,
     ) {
-        const accountId = req.user.userId;
+        const accountId = req.user._id;
         return this.cutiService.applyCuti(accountId, dto);
     }
 
@@ -24,11 +24,11 @@ export class CutiController {
     @Post('list')
     async getUserCutiList(
         @Request() req,
-        @Body('status') status: 'pending' | 'approved' | 'rejected' = 'pending',
+        @Body('status') status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         @Body('page') page = 1,
         @Body('limit') limit = 25,
     ) {
-        const accountId = req.user.userId;
+        const accountId = req.user._id;
         return this.cutiService.getUserCutiList(accountId, status, page, limit);
     }
 
@@ -53,7 +53,7 @@ export class CutiController {
     @UseGuards(JwtAuthGuard)
     @Get('detail/:id')
     async getUserCutiDetail(@Request() req, @Param('id') id: string) {
-        const accountId = req.user.userId;
+        const accountId = req.user._id;
         return this.cutiService.getUserCutiDetail(accountId, id);
     }
 

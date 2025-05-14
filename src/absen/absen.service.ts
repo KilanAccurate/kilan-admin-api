@@ -10,6 +10,7 @@ import { ApprovalData, CreateAbsensiDto } from './dto/absensi.dto';
 import { Media } from 'src/cloudinary/schemas/media.schema';
 import { Role, User, UserDocument } from 'src/auth/model/user.model';
 import { FcmService } from 'src/firebase/fcm/fcm.service';
+import { SiteLocation, SiteLocationDocument } from 'src/location/schemas/site-location.schema';
 
 @Injectable()
 export class AbsensiService {
@@ -17,6 +18,7 @@ export class AbsensiService {
         @InjectModel('Absensi') private absensiModel: Model<AbsensiDocument>,
         @InjectModel('Media') private mediaModel: Model<Media>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
+        @InjectModel(SiteLocation.name) private siteLocationModel: Model<SiteLocationDocument>,
         private cloudinaryService: CloudinaryService,
         private readonly fcmService: FcmService,
     ) { }
@@ -54,10 +56,57 @@ export class AbsensiService {
 
             // Pagination
             const skip = (page - 1) * limit;
-            const [totalCount, items] = await Promise.all([
-                this.absensiModel.countDocuments(query),
-                this.absensiModel.find(query).skip(skip).limit(limit).lean(),
+            const absensiList = await this.absensiModel.aggregate([
+                { $match: query },
+                {
+                    $addFields: {
+                        latestDate: {
+                            $switch: {
+                                branches: [
+                                    {
+                                        case: { $and: [{ $ne: ["$startDate", null] }, { $ne: ["$requestedDate", null] }, { $gt: ["$startDate", "$requestedDate"] }] },
+                                        then: "$startDate"
+                                    },
+                                    {
+                                        case: { $and: [{ $ne: ["$startDate", null] }, { $ne: ["$requestedDate", null] }, { $lte: ["$startDate", "$requestedDate"] }] },
+                                        then: "$requestedDate"
+                                    },
+                                    {
+                                        case: { $and: [{ $ne: ["$startDate", null] }, { $eq: ["$requestedDate", null] }] },
+                                        then: "$startDate"
+                                    },
+                                    {
+                                        case: { $and: [{ $eq: ["$startDate", null] }, { $ne: ["$requestedDate", null] }] },
+                                        then: "$requestedDate"
+                                    }
+                                ],
+                                default: null
+                            }
+                        }
+                    }
+                },
+                { $sort: { updatedAt: -1 } },
+                { $skip: skip },
+                { $limit: limit }
             ]);
+
+
+            const siteIds = absensiList
+                .map(absensi => absensi.detectedSite)
+                .filter(id => id != null);
+
+            const sites = await this.siteLocationModel
+                .find({ _id: { $in: siteIds } })
+                .lean();
+
+            const siteMap = new Map(sites.map(site => [site._id.toString(), site]));
+
+            const items = absensiList.map(absensi => ({
+                ...absensi,
+                detectedSite: siteMap.get(absensi.detectedSite?.toString()) || null,
+            }));
+
+            const totalCount = await this.absensiModel.countDocuments(query);
 
             const isMax = skip + items.length >= totalCount;
 
@@ -321,9 +370,123 @@ export class AbsensiService {
         }
     }
 
+    async absenLembur(
+        accountId: string,
+        absensiDto: CreateAbsensiDto,
+        absensiId: string,
+        startImgFile?: Express.Multer.File
+    ): Promise<any> {
+        try {
+            let startImgId: string | undefined;
+            let startImgUrl: string | undefined;
+
+            const user = await this.userModel.findById(accountId);
+            if (!user) {
+                return formatResponse('error', 404, 'User not found');
+            }
+
+            const existedAbsen = await this.absensiModel.findById(absensiId);
+            if (!existedAbsen) {
+                return formatResponse('error', 404, 'Absensi not found');
+            }
+
+            // If there is an image, upload it and store in Media collection
+            if (startImgFile) {
+                const uploadResult = await this.cloudinaryService.uploadImageMasuk(startImgFile).catch(() => null);
+                if (!uploadResult) {
+                    return formatResponse('error', 500, 'Image upload failed, absensi not updated');
+                }
+
+                const newMedia = new this.mediaModel({
+                    assetId: uploadResult.asset_id,
+                    publicId: uploadResult.public_id,
+                    version: uploadResult.version,
+                    versionId: uploadResult.version_id,
+                    signature: uploadResult.signature,
+                    width: uploadResult.width,
+                    height: uploadResult.height,
+                    format: uploadResult.format,
+                    resourceType: uploadResult.resource_type,
+                    createdAt: uploadResult.created_at,
+                    bytes: uploadResult.bytes,
+                    type: uploadResult.type,
+                    etag: uploadResult.etag,
+                    placeholder: uploadResult.placeholder,
+                    url: uploadResult.url,
+                    secureUrl: uploadResult.secure_url,
+                    assetFolder: uploadResult.asset_folder,
+                    displayName: uploadResult.display_name,
+                    originalFilename: uploadResult.original_filename,
+                });
+
+                const savedMedia = await newMedia.save();
+                startImgId = savedMedia._id.toString();
+                startImgUrl = savedMedia.url.toString();
+            }
+
+            if (typeof absensiDto.startPosition === "string") {
+                absensiDto.startPosition = JSON.parse(absensiDto.startPosition);
+            }
+
+            // Update the absensi document
+            existedAbsen.startDate = absensiDto.startDate;
+            existedAbsen.startPosition = absensiDto.startPosition as any;
+            existedAbsen.remarks = absensiDto.remarks;
+            existedAbsen.isOverTime = absensiDto.isOverTime;
+            existedAbsen.startImgId = startImgId;
+            existedAbsen.startImgUrl = startImgUrl;
+
+            const updatedAbsensi = await existedAbsen.save();
+
+            // // Send notification if lembur
+            // if (absensiDto.isOverTime) {
+            //     let pjoList = await this.userModel.find(
+            //         { 'site._id': user.site._id, role: Role.PJO },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
+
+            //     let managerList = await this.userModel.find(
+            //         { role: Role.Manager },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
+
+            //     let hrdList = await this.userModel.find(
+            //         { 'site._id': user.site._id, role: Role.HRD },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
+
+            //     let adminList = await this.userModel.find(
+            //         { role: Role.Admin },
+            //         { fullName: 1, role: 1, fcmToken: 1 }
+            //     );
+
+            //     let combinedSuperior = [...pjoList, ...managerList, ...hrdList, ...adminList];
+
+            //     await Promise.all(combinedSuperior.map(superior =>
+            //         this.fcmService.sendNotification(
+            //             superior.fcmToken,
+            //             `Pengajuan Lembur dari ${user.fullName}`,
+            //             `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
+            //             {
+            //                 'absensiId': updatedAbsensi._id.toString(),
+            //                 'route': 'detail-absensi',
+            //                 'type': 'lembur',
+            //                 'userId': user._id.toString(),
+            //             },
+            //         )
+            //     ));
+            // }
+
+            return formatResponse('success', 200, 'Absensi lembur updated successfully', updatedAbsensi);
+        } catch (error) {
+            return formatResponse('error', 500, 'Failed to update lembur absensi', error.message);
+        }
+    }
+
+
     async actionLemburan(absensiId: string, approvalData: ApprovalData): Promise<any> {
         try {
-            const absensi = await this.absensiModel.findOne({ id: absensiId });
+            const absensi = await this.absensiModel.findById(absensiId);
             if (!absensi) {
                 return formatResponse('error', 404, 'Absensi not found');
             }
@@ -349,46 +512,47 @@ export class AbsensiService {
                     return formatResponse('error', 400, 'Invalid role submitted');
             }
 
-            const updatedAbsensi = await this.absensiModel.findOneAndUpdate(
-                { id: absensiId },
+            const updatedAbsensi = await this.absensiModel.findByIdAndUpdate(
+                absensiId,
                 { $set: updateField },
                 { new: true }
             );
 
-            if (updatedAbsensi.isOverTime) {
-                let stats = approvalData.approvalStatus;
-                this.fcmService.sendNotification(
-                    user.fcmToken,
-                    `Pengajuan Lembur anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-                    `Hai ${user.fullName}, pengajuan lembur anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role} ${approvalData.role === Role.PJO ? 'permohonan lemburan akan dilanjutkan ke manager' : 'selamat bekerja!'}.`,
-                    {
-                        'absensiId': updateField._id.toString(),
-                        'route': 'detail-absensi',
-                        'type': 'lembur',
-                        'userId': user._id.toString(),
-                        'status': approvalData.approvalStatus,
-                    },
-                );
-                if (approvalData.role === Role.PJO && approvalData.approvalStatus === 'approved') {
-                    let managerList = await this.userModel.find(
-                        { role: Role.Manager },
-                        { fullName: 1, role: 1, fcmToken: 1 }
-                    );
-                    await Promise.all(managerList.map(superior =>
-                        this.fcmService.sendNotification(
-                            superior.fcmToken,
-                            `Pengajuan Lembur dari ${user.fullName}`,
-                            `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
-                            {
-                                'absensiId': updatedAbsensi._id.toString(),
-                                'route': 'detail-absensi',
-                                'type': 'lembur',
-                                'userId': user._id.toString(),
-                            },
-                        )
-                    ));
-                }
-            }
+
+            // if (updatedAbsensi.isOverTime) {
+            //     let stats = approvalData.approvalStatus;
+            //     this.fcmService.sendNotification(
+            //         user.fcmToken,
+            //         `Pengajuan Lembur anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+            //         `Hai ${user.fullName}, pengajuan lembur anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role} ${approvalData.role === Role.PJO ? 'permohonan lemburan akan dilanjutkan ke manager' : 'selamat bekerja!'}.`,
+            //         {
+            //             'absensiId': updateField._id.toString(),
+            //             'route': 'detail-absensi',
+            //             'type': 'lembur',
+            //             'userId': user._id.toString(),
+            //             'status': approvalData.approvalStatus,
+            //         },
+            //     );
+            //     if (approvalData.role === Role.PJO && approvalData.approvalStatus === 'approved') {
+            //         let managerList = await this.userModel.find(
+            //             { role: Role.Manager },
+            //             { fullName: 1, role: 1, fcmToken: 1 }
+            //         );
+            //         await Promise.all(managerList.map(superior =>
+            //             this.fcmService.sendNotification(
+            //                 superior.fcmToken,
+            //                 `Pengajuan Lembur dari ${user.fullName}`,
+            //                 `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
+            //                 {
+            //                     'absensiId': updatedAbsensi._id.toString(),
+            //                     'route': 'detail-absensi',
+            //                     'type': 'lembur',
+            //                     'userId': user._id.toString(),
+            //                 },
+            //             )
+            //         ));
+            //     }
+            // }
 
             return formatResponse('success', 200, 'Lemburan approval updated', updatedAbsensi);
         } catch (error) {
