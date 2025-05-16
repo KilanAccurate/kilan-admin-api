@@ -69,7 +69,7 @@ export class AbsensiController {
     }
 
 
-    @Get('admin/absensi')
+    @Get('admin/list')
     async getAbsensiListForAdmin(
         @Query('startDate') startDateStr?: string,
         @Query('endDate') endDateStr?: string,
@@ -140,12 +140,14 @@ export class AbsensiController {
         return this.absensiService.absenLembur(accountId, absensiDto, id, startImgFile);
     }
 
-    @Put('approval/:absensiId')
+    @UseGuards(JwtAuthGuard)
+    @Put('approval')
     async approveLembur(
-        @Param('absensiId') absensiId: string,
+        @Request() req,
         @Body() approvalData: ApprovalData,
     ) {
-        return this.absensiService.actionLemburan(absensiId, approvalData);
+        const accountId = req.user._id;
+        return this.absensiService.actionLemburan(accountId, approvalData);
     }
 
 }

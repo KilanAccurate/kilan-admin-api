@@ -52,6 +52,7 @@ export class AuthService {
             const [users, total] = await Promise.all([
                 this.userModel
                     .find(filter)
+                    .select('-password')
                     .sort({ createdAt: sortOption })
                     .skip(skip)
                     .limit(limit)
@@ -193,6 +194,35 @@ export class AuthService {
         await newUser.save();
 
         return { status: 'success', statusCode: 201, message: 'Signup successful' };
+    }
+
+    async getUser(userId: string) {
+        try {
+            const user = await this.userModel.findById(userId).lean();
+
+            if (!user) {
+                return {
+                    status: 'error',
+                    statusCode: 404,
+                    message: 'User not found',
+                };
+            }
+
+
+            return {
+                status: 'success',
+                statusCode: 200,
+                message: 'User fetched successfully',
+                data: user,
+            };
+        } catch (error) {
+            console.error('Get User by ID error:', error);
+            return {
+                status: 'error',
+                statusCode: 500,
+                message: 'Internal server error',
+            };
+        }
     }
 
     async editAuth(id: string, createUserDto: CreateUserDto) {

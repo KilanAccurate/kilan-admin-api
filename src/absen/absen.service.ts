@@ -130,44 +130,76 @@ export class AbsensiService {
         limit = 25,
     ): Promise<any> {
         try {
-            const query: any = {};
+            const matchStage: any = {};
 
             // Date range filter
             if (startDate && endDate) {
-                query.startDate = { $gte: startDate, $lte: endDate };
+                matchStage.updatedAt = { $gte: startDate, $lte: endDate };
             } else if (startDate) {
-                query.startDate = { $gte: startDate };
+                matchStage.updatedAt = { $gte: startDate };
             } else if (endDate) {
-                query.startDate = { $lte: endDate };
+                matchStage.updatedAt = { $lte: endDate };
             }
 
             // Type filter
             if (type === 'lembur') {
-                query.isOverTime = true;
+                matchStage.isOverTime = true;
             } else if (type === 'reguler') {
-                query.isOverTime = false;
+                matchStage.isOverTime = false;
             }
 
-            // Pagination
             const skip = (page - 1) * limit;
-            const [totalCount, items] = await Promise.all([
-                this.absensiModel.countDocuments(query),
-                this.absensiModel.find(query).skip(skip).limit(limit).lean(),
+
+            const [data, totalCountResult] = await Promise.all([
+                this.absensiModel.aggregate([
+                    { $match: matchStage },
+                    {
+                        $addFields: {
+                            accountId: { $toObjectId: "$accountId" }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            let: { userId: '$accountId' },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $eq: ['$_id', '$$userId'] }
+                                    }
+                                },
+                                {
+                                    $project: {
+                                        password: 0 // explicitly exclude password
+                                    }
+                                }
+                            ],
+                            as: 'account'
+                        }
+                    },
+                    { $unwind: { path: '$account', preserveNullAndEmptyArrays: true } },
+                    { $skip: skip },
+                    { $limit: limit },
+                ]),
+                this.absensiModel.countDocuments(matchStage),
             ]);
 
-            const isMax = skip + items.length >= totalCount;
+            const isMax = skip + data.length >= totalCountResult;
+
+            console.log('heakrh')
 
             return formatResponse('success', 200, 'Absensi list retrieved successfully', {
-                items,
+                items: data,
                 page,
                 limit,
-                totalCount,
+                totalCount: totalCountResult,
                 isMax,
             });
         } catch (error) {
             return formatResponse('error', 500, 'Failed to retrieve absensi list', error.message);
         }
     }
+
 
 
 
@@ -484,21 +516,24 @@ export class AbsensiService {
     }
 
 
-    async actionLemburan(absensiId: string, approvalData: ApprovalData): Promise<any> {
+    async actionLemburan(accountId: string, approvalData: ApprovalData): Promise<any> {
         try {
-            const absensi = await this.absensiModel.findById(absensiId);
+            const absensi = await this.absensiModel.findById(approvalData.uid);
             if (!absensi) {
                 return formatResponse('error', 404, 'Absensi not found');
             }
 
-            const user = await this.userModel.findById(absensi.accountId);
+            const user = await this.userModel.findById(accountId);
             if (!user) {
                 return formatResponse('error', 404, 'User not found');
             }
 
             const updateField: Record<string, any> = {};
 
-            switch (approvalData.role) {
+            approvalData.role = user.role as 'pjo' | 'manager' | 'hrd';
+            approvalData.userId = accountId;
+
+            switch (user.role) {
                 case 'pjo':
                     updateField.pjoApproval = approvalData;
                     break;
@@ -513,7 +548,7 @@ export class AbsensiService {
             }
 
             const updatedAbsensi = await this.absensiModel.findByIdAndUpdate(
-                absensiId,
+                approvalData.uid,
                 { $set: updateField },
                 { new: true }
             );

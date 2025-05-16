@@ -7,9 +7,11 @@ import { SiteLocationService } from 'src/location/site-location.service';
 import { SiteLocationModule } from 'src/location/site-location.module';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt/dist';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
     imports: [
+        ConfigModule.forRoot(),
         MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]), // Register User schema
         SiteLocationModule,
         JwtModule.register({

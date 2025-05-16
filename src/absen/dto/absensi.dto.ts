@@ -3,18 +3,27 @@ import { Type } from 'class-transformer';
 import { SiteLocation } from 'src/location/schemas/site-location.schema';
 
 export class ApprovalData {
+    @IsOptional()
     @IsString()
     uid: string;
 
+    @IsOptional()
     @IsDate()
     approvedDate: Date;
 
+    @IsOptional()
     @IsString()
     userId: string;
 
+    @IsOptional()
+    @IsString()
+    remarks: string;
+
+    @IsOptional()
     @IsIn(['approved', 'rejected'])
     approvalStatus: 'approved' | 'rejected';
 
+    @IsOptional()
     @IsIn(['pjo', 'manager', 'hrd'])
     role: 'pjo' | 'manager' | 'hrd';
 }

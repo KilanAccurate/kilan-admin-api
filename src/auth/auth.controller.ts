@@ -32,22 +32,30 @@ export class AuthController {
         return result;
     }
 
-    @UseGuards(JwtAuthGuard) // Protect this route
-    @Put('edit')
+    @Put('edit/:userId')
     editAuth(
-        @Request() req,
+        @Param('userId') userId: string,
         @Body() dto: CreateUserDto
     ) {
-        const accountId = req.user.userId;
-        const result = this.authService.editAuth(accountId, dto);
+        const result = this.authService.editAuth(userId, dto);
         return result;
     }
 
     @UseGuards(JwtAuthGuard) // Protect this route
-    @Delete('delete')
-    deleteAuth(@Request() req,) {
-        const accountId = req.user.userId
-        const result = this.authService.deleteAuth(accountId);
+    @Get('user')
+    getUser(
+        @Request() req,
+    ) {
+        console.log(req)
+        const accountId = req.user._id;
+        const result = this.authService.getUser(accountId);
+        return result;
+    }
+
+    // @UseGuards(JwtAuthGuard) // Protect this route
+    @Delete('delete/:userId')
+    deleteAuth(@Param('userId') userId: string) {
+        const result = this.authService.deleteAuth(userId);
         return result;
     }
 
@@ -57,7 +65,7 @@ export class AuthController {
         @Request() req,
         @Body('fcmToken') fcmToken: string,
     ) {
-        const accountId = req.user.userId
+        const accountId = req.user._id
         return this.authService.updateFcmToken(accountId, fcmToken);
     }
 }

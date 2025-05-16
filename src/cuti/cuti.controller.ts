@@ -1,6 +1,6 @@
 
 // cuti.controller.ts
-import { Controller, Post, Get, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, UseGuards, Request, Put } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { CutiService } from './cuti.service';
 import { CreateCutiDto } from './dto/create-cuti.dto';
@@ -33,17 +33,18 @@ export class CutiController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Patch('action/:id')
+    @Put('action')
     async approveCuti(
-        @Param('id') id: string,
+        @Request() req,
         @Body() approvalData: ApprovalData,
     ) {
-        return this.cutiService.actionCuti(id, approvalData);
+        const accountId = req.user._id;
+        return this.cutiService.actionCuti(accountId, approvalData);
     }
 
     @Post('admin/list')
     async getAllCutiList(
-        @Body('status') status: 'pending' | 'approved' | 'rejected' = 'pending',
+        @Body('status') status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         @Body('page') page = 1,
         @Body('limit') limit = 25,
     ) {

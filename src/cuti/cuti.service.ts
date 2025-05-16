@@ -19,31 +19,70 @@ export class CutiService {
     ) { }
 
     async getCutiList(
-        status: 'pending' | 'approved' | 'rejected' = 'pending',
+        status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         page = 1,
         limit = 25
     ): Promise<any> {
         try {
-            const query: any = {};
+            const matchStage: any = {};
 
             switch (status) {
                 case 'approved':
-                    query['pjoApproval'] = { $exists: true };
-                    query['pjoApproval.approvalStatus'] = 'approved';
+                    matchStage['pjoApproval'] = { $exists: true };
+                    matchStage['pjoApproval.approvalStatus'] = 'approved';
                     break;
                 case 'rejected':
-                    query['pjoApproval'] = { $exists: true };
-                    query['pjoApproval.approvalStatus'] = 'rejected';
+                    matchStage['pjoApproval'] = { $exists: true };
+                    matchStage['pjoApproval.approvalStatus'] = 'rejected';
                     break;
                 case 'pending':
+                    matchStage['pjoApproval'] = { $exists: false };
+                    break;
+                case 'all':
                 default:
-                    query['pjoApproval'] = { $exists: false };
+                    // no filter needed
+                    break;
             }
 
             const skip = (page - 1) * limit;
-            const [totalCount, items] = await Promise.all([
-                this.cutiModel.countDocuments(query),
-                this.cutiModel.find(query).skip(skip).limit(limit).lean(),
+
+            const [items, totalCount] = await Promise.all([
+                this.cutiModel.aggregate([
+                    { $match: matchStage },
+                    {
+                        $addFields: {
+                            accountId: { $toObjectId: "$accountId" }
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'users',
+                            let: { userId: "$accountId" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $eq: ["$_id", "$$userId"] }
+                                    }
+                                },
+                                {
+                                    $project: {
+                                        password: 0
+                                    }
+                                }
+                            ],
+                            as: 'account'
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: '$account',
+                            preserveNullAndEmptyArrays: true
+                        }
+                    },
+                    { $skip: skip },
+                    { $limit: limit }
+                ]),
+                this.cutiModel.countDocuments(matchStage)
             ]);
 
             const isMax = skip + items.length >= totalCount;
@@ -201,18 +240,20 @@ export class CutiService {
 
 
 
-    async actionCuti(cutiId: string, approvalData: ApprovalData): Promise<any> {
+    async actionCuti(accountId: string, approvalData: ApprovalData): Promise<any> {
         // TODO: Handle FCM approval send notification to user if approved/rejected
         try {
 
-            const cuti = await this.cutiModel.findById(cutiId);
-            const user = await this.userModel.findById(cuti?.accountId);
+            const cuti = await this.cutiModel.findById(approvalData?.uid);
+            const user = await this.userModel.findById(accountId);
             if (!user) {
                 return formatResponse('error', 404, 'User not found');
             }
             if (!cuti) return formatResponse('error', 404, 'Cuti not found');
+            approvalData.role = user.role as 'pjo' | 'manager' | 'hrd';
+            approvalData.userId = accountId;
             const updateField: Record<string, any> = {};
-            switch (approvalData.role) {
+            switch (user.role) {
                 case 'pjo':
                     updateField.pjoApproval = approvalData;
                     break;
@@ -226,8 +267,9 @@ export class CutiService {
                     return formatResponse('error', 400, 'Invalid role submitted');
             }
 
+
             const updated = await this.cutiModel.findByIdAndUpdate(
-                cutiId,
+                approvalData.uid,
                 { $set: updateField },
                 { new: true }
             );
