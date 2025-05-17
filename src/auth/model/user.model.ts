@@ -42,8 +42,12 @@ export class User {
     @Prop({ required: false })
     fcmToken?: string;
 
+    @Prop({ required: false })
+    fcmTokenExpiresAt?: Date;
+
     @Prop({ required: true, enum: Role })
     role: Role;
+
 
     static async hashPassword(password: string): Promise<string> {
         return bcrypt.hash(password, 10);

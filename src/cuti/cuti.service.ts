@@ -126,45 +126,46 @@ export class CutiService {
                 ...createCutiDto,
             });
             const saved = await newCuti.save();
-            // let pjoList = await this.userModel.find(
-            //     { 'site._id': user.site._id, role: Role.PJO },
-            //     { fullName: 1, role: 1, fcmToken: 1 }
-            // );
+            let pjoList = await this.userModel.find(
+                { 'site._id': user.site._id, role: Role.PJO },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
 
-            // let managerList = await this.userModel.find(
-            //     { role: Role.Manager },
-            //     { fullName: 1, role: 1, fcmToken: 1 }
-            // );
+            let managerList = await this.userModel.find(
+                { role: Role.Manager },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
 
-            // let hrdList = await this.userModel.find(
-            //     { 'site._id': user.site._id, role: Role.HRD },
-            //     { fullName: 1, role: 1, fcmToken: 1 }
-            // );
+            let hrdList = await this.userModel.find(
+                { 'site._id': user.site._id, role: Role.HRD },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
 
-            // let adminList = await this.userModel.find(
-            //     { role: Role.Admin },
-            //     { fullName: 1, role: 1, fcmToken: 1 }
-            // );
+            let adminList = await this.userModel.find(
+                { role: Role.Admin },
+                { fullName: 1, role: 1, fcmToken: 1 }
+            );
 
-            // let combinedSuperior = [
-            //     ...pjoList,
-            //     ...managerList,
-            //     ...hrdList,
-            //     ...adminList,
-            // ];
-            // await Promise.all(combinedSuperior.map(superior =>
-            //     this.fcmService.sendNotification(
-            //         superior.fcmToken,
-            //         `Pengajuan Lembur dari ${user.fullName}`,
-            //         `Hai ${superior.fullName}, ${user.fullName} telah mengajukan cuti.`,
-            //         {
-            //             'cutiId': saved._id.toString(),
-            //             'route': 'detail-cuti',
-            //             'type': 'cuti',
-            //             'userId': user._id.toString(),
-            //         },
-            //     )
-            // ));
+            let combinedSuperior = [
+                ...pjoList,
+                ...managerList,
+                ...hrdList,
+                ...adminList,
+            ];
+            await Promise.all(combinedSuperior.map(superior =>
+                this.fcmService.sendNotification(
+                    user._id.toString(),
+                    superior._id.toString(),
+                    `Pengajuan Lembur dari ${user.fullName}`,
+                    `Hai ${superior.fullName}, ${user.fullName} telah mengajukan cuti.`,
+                    {
+                        'cutiId': saved._id.toString(),
+                        'route': 'detail-cuti',
+                        'type': 'cuti',
+                        'userId': user._id.toString(),
+                    },
+                )
+            ));
 
             return formatResponse('success', 201, 'Cuti applied successfully', saved);
         } catch (error) {
@@ -249,6 +250,10 @@ export class CutiService {
             if (!user) {
                 return formatResponse('error', 404, 'User not found');
             }
+            const targetUser = await this.userModel.findById(cuti.accountId);
+            if (!targetUser) {
+                return formatResponse('error', 404, 'target user not found');
+            }
             if (!cuti) return formatResponse('error', 404, 'Cuti not found');
             approvalData.role = user.role as 'pjo' | 'manager' | 'hrd';
             approvalData.userId = accountId;
@@ -275,43 +280,45 @@ export class CutiService {
             );
 
             let stats = approvalData.approvalStatus;
-            // this.fcmService.sendNotification(
-            //     user.fcmToken,
-            //     `Pengajuan Cuti anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-            //     `Hai ${user.fullName}, pengajuan cuti anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
-            //     {
-            //         'cutiId': updateField._id.toString(),
-            //         'route': 'detail-cuti',
-            //         'type': 'cuti',
-            //         'userId': user._id.toString(),
-            //         'status': approvalData.approvalStatus,
-            //     },
-            // );
-            // if (approvalData.role === 'pjo') {
-            //     let managerList = await this.userModel.find(
-            //         { role: Role.Manager },
-            //         { fullName: 1, role: 1, fcmToken: 1 }
-            //     );
-            //     let hrdList = await this.userModel.find(
-            //         { role: Role.HRD },
-            //         { fullName: 1, role: 1, fcmToken: 1 }
-            //     );
+            this.fcmService.sendNotification(
+                accountId,
+                cuti.accountId,
+                `Pengajuan Cuti anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+                `Hai ${targetUser.fullName}, pengajuan cuti anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
+                {
+                    'cutiId': cuti._id.toString(),
+                    'route': 'detail-cuti',
+                    'type': 'cuti',
+                    'userId': accountId.toString(),
+                    'status': approvalData.approvalStatus,
+                },
+            );
+            if (approvalData.role === 'pjo') {
+                let managerList = await this.userModel.find(
+                    { role: Role.Manager },
+                    { fullName: 1, role: 1, fcmToken: 1 }
+                );
+                let hrdList = await this.userModel.find(
+                    { role: Role.HRD },
+                    { fullName: 1, role: 1, fcmToken: 1 }
+                );
 
-            //     await Promise.all([...managerList, ...hrdList].map(superior =>
-            //         this.fcmService.sendNotification(
-            //             superior.fcmToken,
-            //             `Pengajuan Cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-            //             `Hai ${superior.fullName}, pengajuan cuti oleh ${user.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
-            //             {
-            //                 'cutiId': updateField._id.toString(),
-            //                 'route': 'detail-cuti',
-            //                 'type': 'cuti',
-            //                 'userId': user._id.toString(),
-            //                 'status': approvalData.approvalStatus,
-            //             },
-            //         )
-            //     ));
-            // }
+                await Promise.all([...managerList, ...hrdList].map(superior =>
+                    this.fcmService.sendNotification(
+                        accountId,
+                        superior._id.toString(),
+                        `Pengajuan Cuti oleh ${targetUser.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+                        `Hai ${superior.fullName}, pengajuan cuti oleh ${targetUser.fullName} telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role}.`,
+                        {
+                            'cutiId': updateField._id.toString(),
+                            'route': 'detail-cuti',
+                            'type': 'cuti',
+                            'userId': user._id.toString(),
+                            'status': approvalData.approvalStatus,
+                        },
+                    )
+                ));
+            }
             return formatResponse('success', 200, 'Cuti approval updated', updated);
         } catch (error) {
             return formatResponse('error', 500, 'Failed to approve cuti', error.message);

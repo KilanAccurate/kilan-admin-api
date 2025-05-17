@@ -186,7 +186,6 @@ export class AbsensiService {
 
             const isMax = skip + data.length >= totalCountResult;
 
-            console.log('heakrh')
 
             return formatResponse('success', 200, 'Absensi list retrieved successfully', {
                 items: data,
@@ -314,7 +313,8 @@ export class AbsensiService {
             if (absensiDto.isOverTime) {
                 await Promise.all(combinedSuperior.map(superior =>
                     this.fcmService.sendNotification(
-                        superior.fcmToken,
+                        user._id.toString(),
+                        superior._id.toString(),
                         `Pengajuan Lembur dari ${user.fullName}`,
                         `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
                         {

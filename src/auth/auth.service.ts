@@ -282,7 +282,7 @@ export class AuthService {
         }
     }
 
-    async updateFcmToken(userId: string, fcmToken: string) {
+    async updateFcmToken(userId: string, fcmToken: string, fcmTokenIssuedAt?: string) {
         try {
             const user = await this.userModel.findById(userId);
             if (!user) {
@@ -290,14 +290,31 @@ export class AuthService {
             }
 
             user.fcmToken = fcmToken;
+
+            if (fcmTokenIssuedAt) {
+                const issuedAt = new Date(fcmTokenIssuedAt);
+                const TTL_DAYS = 30;
+                const expiresAt = new Date(issuedAt.getTime() + TTL_DAYS * 24 * 60 * 60 * 1000);
+                user.fcmTokenExpiresAt = expiresAt;
+            }
+
             await user.save();
 
-            return { status: 'success', statusCode: 200, message: 'FCM Token updated successfully' };
+            return {
+                status: 'success',
+                statusCode: 200,
+                message: 'FCM Token updated successfully',
+            };
         } catch (error) {
             console.error('Update FCM token error:', error);
-            return { status: 'error', statusCode: 500, message: 'Internal server error' };
+            return {
+                status: 'error',
+                statusCode: 500,
+                message: 'Internal server error',
+            };
         }
     }
+
 
 
 }
