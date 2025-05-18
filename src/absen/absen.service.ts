@@ -134,11 +134,11 @@ export class AbsensiService {
 
             // Date range filter
             if (startDate && endDate) {
-                matchStage.updatedAt = { $gte: startDate, $lte: endDate };
+                matchStage.createdAt = { $gte: startDate, $lte: endDate };
             } else if (startDate) {
-                matchStage.updatedAt = { $gte: startDate };
+                matchStage.createdAt = { $gte: startDate };
             } else if (endDate) {
-                matchStage.updatedAt = { $lte: endDate };
+                matchStage.createdAt = { $lte: endDate };
             }
 
             // Type filter
@@ -527,6 +527,10 @@ export class AbsensiService {
             if (!user) {
                 return formatResponse('error', 404, 'User not found');
             }
+            const targetUser = await this.userModel.findById(absensi.accountId);
+            if (!targetUser) {
+                return formatResponse('error', 404, 'Target user not found');
+            }
 
             const updateField: Record<string, any> = {};
 
@@ -554,40 +558,42 @@ export class AbsensiService {
             );
 
 
-            // if (updatedAbsensi.isOverTime) {
-            //     let stats = approvalData.approvalStatus;
-            //     this.fcmService.sendNotification(
-            //         user.fcmToken,
-            //         `Pengajuan Lembur anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
-            //         `Hai ${user.fullName}, pengajuan lembur anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role} ${approvalData.role === Role.PJO ? 'permohonan lemburan akan dilanjutkan ke manager' : 'selamat bekerja!'}.`,
-            //         {
-            //             'absensiId': updateField._id.toString(),
-            //             'route': 'detail-absensi',
-            //             'type': 'lembur',
-            //             'userId': user._id.toString(),
-            //             'status': approvalData.approvalStatus,
-            //         },
-            //     );
-            //     if (approvalData.role === Role.PJO && approvalData.approvalStatus === 'approved') {
-            //         let managerList = await this.userModel.find(
-            //             { role: Role.Manager },
-            //             { fullName: 1, role: 1, fcmToken: 1 }
-            //         );
-            //         await Promise.all(managerList.map(superior =>
-            //             this.fcmService.sendNotification(
-            //                 superior.fcmToken,
-            //                 `Pengajuan Lembur dari ${user.fullName}`,
-            //                 `Hai ${superior.fullName}, ${user.fullName} telah mengajukan lembur.`,
-            //                 {
-            //                     'absensiId': updatedAbsensi._id.toString(),
-            //                     'route': 'detail-absensi',
-            //                     'type': 'lembur',
-            //                     'userId': user._id.toString(),
-            //                 },
-            //             )
-            //         ));
-            //     }
-            // }
+            if (updatedAbsensi.isOverTime) {
+                let stats = approvalData.approvalStatus;
+                this.fcmService.sendNotification(
+                    accountId,
+                    targetUser.id,
+                    `Pengajuan Lembur anda ${stats === 'approved' ? 'disetujui' : 'ditolak'}`,
+                    `Hai ${targetUser.fullName}, pengajuan lembur anda telah ${stats === 'approved' ? 'disetujui' : 'ditolak'} oleh ${approvalData.role} ${approvalData.role === Role.PJO ? 'permohonan lemburan akan dilanjutkan ke manager' : 'selamat bekerja!'}.`,
+                    {
+                        'absensiId': absensi._id.toString(),
+                        'route': 'detail-absensi',
+                        'type': 'lembur',
+                        'userId': user._id.toString(),
+                        'status': approvalData.approvalStatus,
+                    },
+                );
+                if (approvalData.role === Role.PJO && approvalData.approvalStatus === 'approved') {
+                    let managerList = await this.userModel.find(
+                        { role: Role.Manager },
+                        { fullName: 1, role: 1, fcmToken: 1 }
+                    );
+                    await Promise.all(managerList.map(superior =>
+                        this.fcmService.sendNotification(
+                            accountId,
+                            superior.id,
+                            `Pengajuan Lembur dari ${targetUser.fullName}`,
+                            `Hai ${superior.fullName}, ${targetUser.fullName} telah mengajukan lembur.`,
+                            {
+                                'absensiId': absensi._id.toString(),
+                                'route': 'detail-absensi',
+                                'type': 'lembur',
+                                'userId': user._id.toString(),
+                            },
+                        )
+                    ));
+                }
+            }
 
             return formatResponse('success', 200, 'Lemburan approval updated', updatedAbsensi);
         } catch (error) {

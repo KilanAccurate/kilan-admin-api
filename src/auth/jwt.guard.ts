@@ -1,5 +1,5 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -11,23 +11,26 @@ export class JwtAuthGuard implements CanActivate {
 
         if (!authHeader) {
             console.log('No Authorization header found');
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Authorization header missing');
         }
 
         const token = authHeader.split(' ')[1];
         if (!token) {
             console.log('Token missing in Authorization header');
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Token missing');
         }
 
         try {
-            const decoded = this.jwtService.verify(token);
-            request.user = decoded; // Attach user info
-            // console.log('Decoded user:', decoded);
+            const decoded = this.jwtService.verify(token); // will throw if expired
+            request.user = decoded;
             return true;
         } catch (error) {
+            if (error.name === 'TokenExpiredError') {
+                console.log('JWT token expired:', error.message);
+                throw new UnauthorizedException('Token expired');
+            }
             console.log('JWT verification failed:', error.message);
-            throw new UnauthorizedException();
+            throw new UnauthorizedException('Invalid token');
         }
     }
 }

@@ -20,7 +20,7 @@ const CutiSchema = new Schema({
     poh: { type: String, enum: ['lokal', 'nonLokal'], required: true },
     rosterCuti: { type: String, required: true },
     tujuanCuti: { type: String, required: true },
-    pekerjaanDiserahkanPada: [{ type: String }],
+    pekerjaanDiserahkanPada: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     transport: { type: String, required: true },
     sisaHariCuti: { type: Number, required: true },
     keterangan: { type: String },
@@ -41,7 +41,7 @@ export interface Cuti {
     poh: 'lokal' | 'nonLokal';
     rosterCuti: string;
     tujuanCuti: string;
-    pekerjaanDiserahkanPada: string[];
+    pekerjaanDiserahkanPada: User[];
     transport: string;
     sisaHariCuti: number;
     keterangan?: string;

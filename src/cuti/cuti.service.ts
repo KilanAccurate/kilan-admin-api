@@ -49,41 +49,65 @@ export class CutiService {
             const [items, totalCount] = await Promise.all([
                 this.cutiModel.aggregate([
                     { $match: matchStage },
+
+                    // Step 1: Convert string IDs to ObjectIds
                     {
                         $addFields: {
-                            accountId: { $toObjectId: "$accountId" }
-                        }
+                            pekerjaanDiserahkanPadaObjIds: {
+                                $map: {
+                                    input: { $ifNull: ["$pekerjaanDiserahkanPada", []] },
+                                    as: "id",
+                                    in: { $toObjectId: "$$id" },
+                                },
+                            },
+                            accountId: { $toObjectId: "$accountId" },
+                        },
                     },
+
+                    // Step 2: Lookup user documents for the pekerjaanDiserahkanPada field
                     {
                         $lookup: {
-                            from: 'users',
+                            from: "users",
+                            let: { ids: "$pekerjaanDiserahkanPadaObjIds" },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: { $in: ["$_id", "$$ids"] },
+                                    },
+                                },
+                                { $project: { password: 0 } },
+                            ],
+                            as: "pekerjaanDiserahkanPada",
+                        },
+                    },
+
+                    // Step 3: Lookup user document for account
+                    {
+                        $lookup: {
+                            from: "users",
                             let: { userId: "$accountId" },
                             pipeline: [
                                 {
                                     $match: {
-                                        $expr: { $eq: ["$_id", "$$userId"] }
-                                    }
+                                        $expr: { $eq: ["$_id", "$$userId"] },
+                                    },
                                 },
-                                {
-                                    $project: {
-                                        password: 0
-                                    }
-                                }
+                                { $project: { password: 0 } },
                             ],
-                            as: 'account'
-                        }
+                            as: "account",
+                        },
                     },
-                    {
-                        $unwind: {
-                            path: '$account',
-                            preserveNullAndEmptyArrays: true
-                        }
-                    },
+
+                    // Step 4: Unwind account (optional)
+                    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+
+                    // Step 5: Pagination
                     { $skip: skip },
-                    { $limit: limit }
+                    { $limit: limit },
                 ]),
-                this.cutiModel.countDocuments(matchStage)
+                this.cutiModel.countDocuments(matchStage),
             ]);
+
 
             const isMax = skip + items.length >= totalCount;
 
@@ -207,6 +231,15 @@ export class CutiService {
                     .sort({ updatedAt: -1 })
                     .skip(skip)
                     .limit(limit)
+                    .populate({
+                        path: 'pekerjaanDiserahkanPada',
+                        select: '-password', // exclude password
+                    })
+                    // Optionally populate accountId if needed:
+                    // .populate({
+                    //     path: 'accountId',
+                    //     select: '-password',
+                    // })
                     .lean(),
             ]);
 
@@ -223,6 +256,7 @@ export class CutiService {
             return formatResponse('error', 500, 'Failed to retrieve cuti list', error.message);
         }
     }
+
 
 
     async getUserCutiDetail(accountId: string, cutiId: string): Promise<any> {
