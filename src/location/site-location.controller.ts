@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Headers, ForbiddenException, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Headers, ForbiddenException, Param, Delete } from '@nestjs/common';
 import { SiteLocationService } from '../location/site-location.service';
 import { SiteLocation } from '../location/schemas/site-location.schema';
 import { ConfigService } from '@nestjs/config';
@@ -23,11 +23,22 @@ export class SiteLocationController {
     @Post()
     async register(
         @Headers('x-api-key') apiKey: string,
-        @Body() body: { siteName: string; sitePolygon: { lat: number; lng: number }[] },
+        @Body() body: { siteName: string; sitePolygon: { lat: number; lng: number }[]; siteCity: string },
     ): Promise<SiteLocation> {
         if (apiKey !== this.configService.get<string>('ADMIN_API_KEY')) {
             throw new ForbiddenException('Invalid API Key');
         }
-        return this.siteLocationService.registerSiteLocation(body.siteName, body.sitePolygon);
+        return this.siteLocationService.registerSiteLocation(body.siteName, body.sitePolygon, body.siteCity,);
     }
+
+    @Delete(':id')
+    async softDelete(
+        @Headers('x-api-key') apiKey: string,
+        @Param('id') id: string) {
+        if (apiKey !== this.configService.get<string>('ADMIN_API_KEY')) {
+            throw new ForbiddenException('Invalid API Key');
+        }
+        return this.siteLocationService.softDeleteSiteLocation(id);
+    }
+
 }

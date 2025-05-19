@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Query, Body } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { GlobalSettingService } from './global-setting.service';
 import { formatResponse } from '../location/site-location.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('global-setting')
 export class GlobalSettingController {
@@ -25,5 +26,16 @@ export class GlobalSettingController {
 
         const updatedSetting = await this.globalSettingService.updateSetting(body.key, body.value);
         return formatResponse('success', 200, 'Setting updated successfully', updatedSetting);
+    }
+
+    @Post('upload-carousel')
+    @UseInterceptors(FileInterceptor('file'))
+    async uploadCarouselImage(@UploadedFile() file: Express.Multer.File) {
+        console.log("here")
+        if (!file) {
+            throw new BadRequestException('File is required');
+        }
+
+        return this.globalSettingService.uploadCarouselImage(file);
     }
 }

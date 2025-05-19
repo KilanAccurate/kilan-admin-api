@@ -21,4 +21,12 @@ export class CloudinaryService {
             }).end(file.buffer);
         });
     }
+    async uploadImageGeneral(file: Express.Multer.File): Promise<any> {
+        return new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream({ folder: 'uploads/general' }, (error, result) => {
+                if (error) return reject(error);
+                resolve(result);
+            }).end(file.buffer);
+        });
+    }
 }
