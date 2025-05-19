@@ -1,23 +1,22 @@
+// api/index.ts
 import { NestFactory } from '@nestjs/core';
-import { createServer, Server } from 'http';
-import { Handler, Context, Callback } from 'aws-lambda';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
-import { AppModule } from 'src/app.module';
+import { AppModule } from '../src/app.module'; // adjust if needed
 
-const expressApp = express();
+const server = express();
 
-async function bootstrap() {
-    const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+const bootstrap = async () => {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
     await app.init();
-}
-
-bootstrap();
-
-export const handler: Handler = (event: any, context: Context, callback: Callback) => {
-    if (!expressApp) {
-        callback(new Error('Express app not initialized'));
-        return;
-    }
-    expressApp(event, context, callback);
 };
+
+let isBootstrapped = false;
+
+export default async function handler(req, res) {
+    if (!isBootstrapped) {
+        await bootstrap();
+        isBootstrapped = true;
+    }
+    return server(req, res);
+}
