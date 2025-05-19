@@ -14,14 +14,17 @@ export class FcmService {
         @InjectModel(NotificationFirebase.name) private notificationModel: Model<NotificationDocument>,
         @InjectModel(User.name) private userModel: Model<UserDocument>,
     ) {
-        const serviceAccountPath = path.resolve(
-            __dirname,
-            '../../../firebase-adminsdk.json',
-        );
-
         if (!admin.apps.length) {
+            const serviceAccountBase64 = process.env.FIREBASE_ADMINSDK_BASE64;
+            if (!serviceAccountBase64) {
+                throw new Error('Missing FIREBASE_ADMINSDK_BASE64 environment variable');
+            }
+
+            const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
+            const serviceAccount = JSON.parse(serviceAccountJson);
+
             admin.initializeApp({
-                credential: admin.credential.cert(serviceAccountPath),
+                credential: admin.credential.cert(serviceAccount),
             });
         }
     }
