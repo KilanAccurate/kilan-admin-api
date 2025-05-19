@@ -1,20 +1,23 @@
-import { createServer, proxy } from 'aws-serverless-express';
-import { Handler, Context, Callback } from 'aws-lambda';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { createServer, Server } from 'http';
+import { Handler, Context, Callback } from 'aws-lambda';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import * as express from 'express';
+import { AppModule } from 'src/app.module';
 
-let cachedServer;
+const expressApp = express();
 
-async function bootstrapServer() {
-    const app = await NestFactory.create(AppModule);
+async function bootstrap() {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
     await app.init();
-    const expressApp = app.getHttpAdapter().getInstance();
-    return createServer(expressApp);
 }
 
-export const handler: Handler = async (event: any, context: Context, callback: Callback) => {
-    if (!cachedServer) {
-        cachedServer = await bootstrapServer();
+bootstrap();
+
+export const handler: Handler = (event: any, context: Context, callback: Callback) => {
+    if (!expressApp) {
+        callback(new Error('Express app not initialized'));
+        return;
     }
-    return proxy(cachedServer, event, context, 'PROMISE').promise;
+    expressApp(event, context, callback);
 };
