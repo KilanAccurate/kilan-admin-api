@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SiteLocation, SiteLocationDocument } from '../location/schemas/site-location.schema';
@@ -19,7 +19,8 @@ export const formatResponse = (
 @Injectable()
 export class SiteLocationService {
   constructor(
-    @InjectModel(SiteLocation.name) private siteLocationModel: Model<SiteLocationDocument>,
+    @InjectModel(SiteLocation.name)
+    private siteLocationModel: Model<SiteLocationDocument>,
   ) { }
 
   async getAll(): Promise<any> {
@@ -27,33 +28,31 @@ export class SiteLocationService {
       const locations = await this.siteLocationModel.find().exec();
       return formatResponse('success', 200, 'Site locations retrieved successfully', locations);
     } catch (error) {
-      return formatResponse('error', 500, 'Failed to retrieve site locations', error.message);
+      throw new InternalServerErrorException('Failed to retrieve site locations');
     }
   }
 
   async get(id: string): Promise<any> {
     try {
-      const locations = await this.siteLocationModel.findById(id);
-      if (locations) {
-        return formatResponse('success', 200, 'Site found', locations);
-      } else {
-        return formatResponse('error', 201, 'Failed to retrieve site locations');
-      }
+      const location = await this.siteLocationModel.findById(id);
+      if (!location) throw new NotFoundException('Site not found');
+      return formatResponse('success', 200, 'Site found', location);
     } catch (error) {
-      return formatResponse('error', 500, error.message);
+      throw error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('Failed to retrieve site location');
     }
   }
 
   async getByName(name: string): Promise<any> {
     try {
-      const locations = await this.siteLocationModel.findOne({ name });
-      if (locations) {
-        return formatResponse('success', 200, 'Site found', locations);
-      } else {
-        return formatResponse('error', 201, "Site not found");
-      }
+      const location = await this.siteLocationModel.findOne({ name });
+      if (!location) throw new NotFoundException('Site not found');
+      return formatResponse('success', 200, 'Site found', location);
     } catch (error) {
-      return formatResponse('error', 500, error.message);
+      throw error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('Failed to retrieve site location by name');
     }
   }
 
@@ -70,7 +69,7 @@ export class SiteLocationService {
       const savedLocation = await newLocation.save();
       return formatResponse('success', 201, 'Site location registered successfully', savedLocation);
     } catch (error) {
-      return formatResponse('error', 500, error.message);
+      throw new InternalServerErrorException('Failed to register site location');
     }
   }
 }
