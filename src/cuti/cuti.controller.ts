@@ -1,10 +1,10 @@
 
 // cuti.controller.ts
 import { Controller, Post, Get, Patch, Body, Param, UseGuards, Request, Put } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 import { CutiService } from './cuti.service';
 import { CreateCutiDto } from './dto/create-cuti.dto';
-import { ApprovalData } from 'src/absen/dto/absensi.dto';
+import { ApprovalData } from '../absen/dto/absensi.dto';
 
 @Controller('cuti')
 export class CutiController {

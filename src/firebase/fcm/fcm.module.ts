@@ -1,13 +1,13 @@
-// src/fcm/fcm.module.ts
+// ../fcm/fcm.module.ts
 import { Module } from '@nestjs/common';
 import { FcmService } from './fcm.service';
 import { FcmController } from './fcm.controller';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NotificationFirebase, NotificationSchema } from './model/notification.model';
-import { User, UserSchema } from 'src/auth/model/user.model';
+import { User, UserSchema } from '../../auth/model/user.model';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from 'src/auth/jwt.strategy';
+import { JwtStrategy } from '../../auth/jwt.strategy';
 
 @Module({
     imports: [

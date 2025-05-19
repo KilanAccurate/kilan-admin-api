@@ -1,4 +1,4 @@
-// src/main.ts
+// ../main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './helper/http-exception.filter';

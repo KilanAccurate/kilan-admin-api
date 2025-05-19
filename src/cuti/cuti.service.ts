@@ -3,12 +3,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
-import { formatResponse } from 'src/helper/response.helper';
+import { formatResponse } from '../helper/response.helper';
 import { CutiDocument } from './schema/cuti.schema';
 import { CreateCutiDto } from './dto/create-cuti.dto';
-import { Role, User, UserDocument } from 'src/auth/model/user.model';
-import { FcmService } from 'src/firebase/fcm/fcm.service';
-import { ApprovalData } from 'src/absen/dto/absensi.dto';
+import { Role, User, UserDocument } from '../auth/model/user.model';
+import { FcmService } from '../firebase/fcm/fcm.service';
+import { ApprovalData } from '../absen/dto/absensi.dto';
 
 @Injectable()
 export class CutiService {

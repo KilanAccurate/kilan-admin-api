@@ -1,7 +1,7 @@
-// src/fcm/fcm.controller.ts
+// ../fcm/fcm.controller.ts
 import { Controller, Post, Body, Request, UseGuards, Get } from '@nestjs/common';
 import { FcmService } from './fcm.service';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
+import { JwtAuthGuard } from '../../auth/jwt.guard';
 
 @Controller('notifications')
 export class FcmController {

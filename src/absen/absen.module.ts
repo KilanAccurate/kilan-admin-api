@@ -1,18 +1,17 @@
 import { MongooseModule } from "@nestjs/mongoose";
 import { AbsensiController } from "./absen.controller";
 import { AbsensiService } from "./absen.service";
-import { CloudinaryService } from "src/cloudinary/cloudinary.service";
 import { AbsensiSchema } from "./schemas/absensi.schema";
 import { Module } from "@nestjs/common";
-import { JwtStrategy } from "src/auth/jwt.strategy";
-import { CloudinaryModule } from "src/cloudinary/cloudinary.module";
-import { CloudinaryProvider } from "src/cloudinary/cloudinary.provider";
-import { MediaSchema } from "src/cloudinary/schemas/media.schema";
+import { JwtStrategy } from "../auth/jwt.strategy";
+import { CloudinaryModule } from "../cloudinary/cloudinary.module";
+import { CloudinaryProvider } from "../cloudinary/cloudinary.provider";
+import { MediaSchema } from "../cloudinary/schemas/media.schema";
 import { JwtModule } from "@nestjs/jwt/dist/jwt.module";
 import { ConfigModule } from "@nestjs/config";
-import { FcmModule } from "src/firebase/fcm/fcm.module";
-import { User, UserSchema } from "src/auth/model/user.model";
-import { SiteLocation, SiteLocationSchema } from "src/location/schemas/site-location.schema";
+import { FcmModule } from "../firebase/fcm/fcm.module";
+import { User, UserSchema } from "../auth/model/user.model";
+import { SiteLocation, SiteLocationSchema } from "../location/schemas/site-location.schema";
 
 @Module({
     imports: [

@@ -1,6 +1,6 @@
 import { IsDate, IsOptional, IsString, IsObject, IsBoolean, IsIn, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SiteLocation } from 'src/location/schemas/site-location.schema';
+import { SiteLocation } from '../../location/schemas/site-location.schema';
 
 export class ApprovalData {
     @IsOptional()

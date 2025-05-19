@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsDate, IsEnum, IsString, IsArray, IsNumber, IsOptional } from "class-validator";
-import { ApprovalData } from "src/absen/dto/absensi.dto";
+import { ApprovalData } from "../../absen/dto/absensi.dto";
 
 export class CreateCutiDto {
     @IsDate()

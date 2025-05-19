@@ -1,5 +1,5 @@
 import * as jwt from 'jsonwebtoken';
-import { UserDocument } from 'src/auth/model/user.model';
+import { UserDocument } from '../auth/model/user.model';
 
 export const generateJWT = (user: UserDocument): string => {
     const { password, ...userWithoutPassword } = user.toObject();

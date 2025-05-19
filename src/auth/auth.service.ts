@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Role, User, UserDocument } from './model/user.model';
-import { generateJWT } from 'src/helper/jwt.helper';
-import { SiteLocationService } from 'src/location/site-location.service';
+import { generateJWT } from '../helper/jwt.helper';
+import { SiteLocationService } from '../location/site-location.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 

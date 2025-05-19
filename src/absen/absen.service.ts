@@ -1,16 +1,15 @@
 import { Injectable, UseGuards } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
-import { formatResponse, SiteLocationService } from 'src/location/site-location.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { formatResponse, SiteLocationService } from '../location/site-location.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Absensi, AbsensiDocument } from './schemas/absensi.schema';
-import { JwtAuthGuard } from 'src/auth/jwt.guard';
 import { ApprovalData, CreateAbsensiDto } from './dto/absensi.dto';
-import { Media } from 'src/cloudinary/schemas/media.schema';
-import { Role, User, UserDocument } from 'src/auth/model/user.model';
-import { FcmService } from 'src/firebase/fcm/fcm.service';
-import { SiteLocation, SiteLocationDocument } from 'src/location/schemas/site-location.schema';
+import { Media } from '../cloudinary/schemas/media.schema';
+import { Role, User, UserDocument } from '../auth/model/user.model';
+import { FcmService } from '../firebase/fcm/fcm.service';
+import { SiteLocation, SiteLocationDocument } from '../location/schemas/site-location.schema';
 
 @Injectable()
 export class AbsensiService {

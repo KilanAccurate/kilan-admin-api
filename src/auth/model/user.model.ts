@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { SiteLocation } from 'src/location/model/site-location.model';
+import { SiteLocation } from '../../location/model/site-location.model';
 
 export type UserDocument = User & Document;
 

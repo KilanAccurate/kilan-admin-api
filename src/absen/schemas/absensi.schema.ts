@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 import { ApprovalData } from '../dto/absensi.dto';
-import { SiteLocation, SiteLocationSchema } from 'src/location/schemas/site-location.schema';
+import { SiteLocation, SiteLocationSchema } from '../../location/schemas/site-location.schema';
 
 
 const GeopifyLocationSchema = new Schema({

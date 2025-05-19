@@ -3,11 +3,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthService } from './auth.service';
 import { User, UserSchema } from './model/user.model';
 import { JwtStrategy } from './jwt.strategy';
-import { SiteLocationService } from 'src/location/site-location.service';
-import { SiteLocationModule } from 'src/location/site-location.module';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt/dist';
 import { ConfigModule } from '@nestjs/config';
+import { SiteLocationModule } from '../location/site-location.module';
 
 @Module({
     imports: [

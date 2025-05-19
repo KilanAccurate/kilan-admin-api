@@ -1,12 +1,12 @@
-// src/fcm/fcm.service.ts
+// ../fcm/fcm.service.ts
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { NotificationDocument, NotificationFirebase } from './model/notification.model';
-import { User, UserDocument } from 'src/auth/model/user.model';
-import { formatResponse } from 'src/helper/response.helper';
+import { User, UserDocument } from '../../auth/model/user.model';
+import { formatResponse } from '../../helper/response.helper';
 
 @Injectable()
 export class FcmService {

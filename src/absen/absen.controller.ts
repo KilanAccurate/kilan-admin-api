@@ -1,7 +1,7 @@
 import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors, Request, Get, Put, Param, Query } from "@nestjs/common";
 import { AbsensiService } from "./absen.service";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { JwtAuthGuard } from "src/auth/jwt.guard";
+import { JwtAuthGuard } from "../auth/jwt.guard";
 import { ApprovalData, CreateAbsensiDto } from "./dto/absensi.dto";
 
 @Controller('absensi')

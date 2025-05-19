@@ -1,7 +1,7 @@
 // cuti.schema.ts
 import { Schema, model, Document } from 'mongoose';
-import { ApprovalData } from 'src/absen/dto/absensi.dto';
-import { User } from 'src/auth/model/user.model';
+import { ApprovalData } from '../../absen/dto/absensi.dto';
+import { User } from '../../auth/model/user.model';
 
 const ApprovalDataSchema = new Schema({
     uid: { type: String, required: true },

@@ -4,11 +4,11 @@ import { CutiModel } from './schema/cuti.schema';
 import { CutiService } from './cuti.service';
 import { CutiController } from './cuti.controller';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from 'src/auth/jwt.strategy';
-import { AuthService } from 'src/auth/auth.service';
-import { AuthModule } from 'src/auth/auth.module';
-import { FcmModule } from 'src/firebase/fcm/fcm.module';
-import { User, UserSchema } from 'src/auth/model/user.model';
+import { JwtStrategy } from '../auth/jwt.strategy';
+import { AuthService } from '../auth/auth.service';
+import { AuthModule } from '../auth/auth.module';
+import { FcmModule } from '../firebase/fcm/fcm.module';
+import { User, UserSchema } from '../auth/model/user.model';
 
 @Module({
     imports: [

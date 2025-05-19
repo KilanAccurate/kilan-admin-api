@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Query, Body } from '@nestjs/common';
 import { GlobalSettingService } from './global-setting.service';
-import { formatResponse } from 'src/location/site-location.service';
+import { formatResponse } from '../location/site-location.service';
 
 @Controller('global-setting')
 export class GlobalSettingController {
