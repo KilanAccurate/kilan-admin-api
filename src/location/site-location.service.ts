@@ -69,7 +69,6 @@ export class SiteLocationService {
   ): Promise<any> {
     try {
       const newLocation = new this.siteLocationModel({
-        id: uuidv4(),
         siteName,
         sitePolygon,
         siteCity,
@@ -77,7 +76,7 @@ export class SiteLocationService {
       const savedLocation = await newLocation.save();
       return formatResponse('success', 201, 'Site location registered successfully', savedLocation);
     } catch (error) {
-      return formatResponse('success', 500, error.message);
+      return formatResponse('error', 500, error.message);
       // throw new InternalServerErrorException('Failed to register site location');
     }
   }
