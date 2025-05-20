@@ -77,7 +77,8 @@ export class SiteLocationService {
       const savedLocation = await newLocation.save();
       return formatResponse('success', 201, 'Site location registered successfully', savedLocation);
     } catch (error) {
-      throw new InternalServerErrorException('Failed to register site location');
+      return formatResponse('success', 500, error.message);
+      // throw new InternalServerErrorException('Failed to register site location');
     }
   }
 
