@@ -9,7 +9,7 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, { bodyParser: false });
     app.useGlobalFilters(new AllExceptionsFilter());
     app.enableCors({
-        origin: ['http://localhost:3000'],
+        origin: ['http://localhost:5173', 'https://kilan-admin.netlify.app'],
         credentials: true,
     });
     await app.init();
