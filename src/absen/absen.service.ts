@@ -127,11 +127,11 @@ export class AbsensiService {
         type: 'all' | 'lembur' | 'reguler' = 'all',
         page = 1,
         limit = 25,
+        fullNameSearch?: string,
     ): Promise<any> {
         try {
             const matchStage: any = {};
 
-            // Date range filter
             if (startDate && endDate) {
                 matchStage.createdAt = { $gte: startDate, $lte: endDate };
             } else if (startDate) {
@@ -140,7 +140,6 @@ export class AbsensiService {
                 matchStage.createdAt = { $lte: endDate };
             }
 
-            // Type filter
             if (type === 'lembur') {
                 matchStage.isOverTime = true;
             } else if (type === 'reguler') {
@@ -149,7 +148,51 @@ export class AbsensiService {
 
             const skip = (page - 1) * limit;
 
+            const aggregationPipeline: any[] = [
+                { $match: matchStage },
+                {
+                    $addFields: {
+                        accountId: { $toObjectId: "$accountId" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        let: { userId: '$accountId' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ['$_id', '$$userId'] }
+                                }
+                            },
+                            {
+                                $project: {
+                                    password: 0
+                                }
+                            }
+                        ],
+                        as: 'account'
+                    }
+                },
+                { $unwind: { path: '$account', preserveNullAndEmptyArrays: true } },
+            ];
+
+            if (fullNameSearch) {
+                aggregationPipeline.push({
+                    $match: {
+                        'account.fullName': {
+                            $regex: fullNameSearch,
+                            $options: 'i'
+                        }
+                    }
+                });
+            }
+
+            aggregationPipeline.push({ $skip: skip });
+            aggregationPipeline.push({ $limit: limit });
+
             const [data, totalCountResult] = await Promise.all([
+                this.absensiModel.aggregate(aggregationPipeline),
                 this.absensiModel.aggregate([
                     { $match: matchStage },
                     {
@@ -166,25 +209,25 @@ export class AbsensiService {
                                     $match: {
                                         $expr: { $eq: ['$_id', '$$userId'] }
                                     }
-                                },
-                                {
-                                    $project: {
-                                        password: 0 // explicitly exclude password
-                                    }
                                 }
                             ],
                             as: 'account'
                         }
                     },
                     { $unwind: { path: '$account', preserveNullAndEmptyArrays: true } },
-                    { $skip: skip },
-                    { $limit: limit },
-                ]),
-                this.absensiModel.countDocuments(matchStage),
+                    ...(fullNameSearch ? [{
+                        $match: {
+                            'account.fullName': {
+                                $regex: fullNameSearch,
+                                $options: 'i'
+                            }
+                        }
+                    }] : []),
+                    { $count: 'total' }
+                ]).then(res => res[0]?.total || 0)
             ]);
 
             const isMax = skip + data.length >= totalCountResult;
-
 
             return formatResponse('success', 200, 'Absensi list retrieved successfully', {
                 items: data,
@@ -197,6 +240,7 @@ export class AbsensiService {
             return formatResponse('error', 500, 'Failed to retrieve absensi list', error.message);
         }
     }
+
 
 
 

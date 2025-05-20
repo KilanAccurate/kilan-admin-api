@@ -47,8 +47,9 @@ export class CutiController {
         @Body('status') status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         @Body('page') page = 1,
         @Body('limit') limit = 25,
+        @Body('search') search = '',
     ) {
-        return this.cutiService.getCutiList(status, page, limit);
+        return this.cutiService.getCutiList(status, page, limit, search);
     }
 
     @UseGuards(JwtAuthGuard)

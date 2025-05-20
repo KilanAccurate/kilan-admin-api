@@ -21,7 +21,8 @@ export class CutiService {
     async getCutiList(
         status: 'all' | 'pending' | 'approved' | 'rejected' = 'all',
         page = 1,
-        limit = 25
+        limit = 25,
+        fullNameSearch?: string
     ): Promise<any> {
         try {
             const matchStage: any = {};
@@ -40,74 +41,78 @@ export class CutiService {
                     break;
                 case 'all':
                 default:
-                    // no filter needed
                     break;
             }
 
             const skip = (page - 1) * limit;
 
-            const [items, totalCount] = await Promise.all([
-                this.cutiModel.aggregate([
-                    { $match: matchStage },
-
-                    // Step 1: Convert string IDs to ObjectIds
-                    {
-                        $addFields: {
-                            pekerjaanDiserahkanPadaObjIds: {
-                                $map: {
-                                    input: { $ifNull: ["$pekerjaanDiserahkanPada", []] },
-                                    as: "id",
-                                    in: { $toObjectId: "$$id" },
+            const basePipeline: any[] = [
+                { $match: matchStage },
+                {
+                    $addFields: {
+                        pekerjaanDiserahkanPadaObjIds: {
+                            $map: {
+                                input: { $ifNull: ["$pekerjaanDiserahkanPada", []] },
+                                as: "id",
+                                in: { $toObjectId: "$$id" },
+                            },
+                        },
+                        accountId: { $toObjectId: "$accountId" },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "users",
+                        let: { ids: "$pekerjaanDiserahkanPadaObjIds" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$ids"] },
                                 },
                             },
-                            accountId: { $toObjectId: "$accountId" },
-                        },
+                            { $project: { password: 0 } },
+                        ],
+                        as: "pekerjaanDiserahkanPada",
                     },
-
-                    // Step 2: Lookup user documents for the pekerjaanDiserahkanPada field
-                    {
-                        $lookup: {
-                            from: "users",
-                            let: { ids: "$pekerjaanDiserahkanPadaObjIds" },
-                            pipeline: [
-                                {
-                                    $match: {
-                                        $expr: { $in: ["$_id", "$$ids"] },
-                                    },
+                },
+                {
+                    $lookup: {
+                        from: "users",
+                        let: { userId: "$accountId" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ["$_id", "$$userId"] },
                                 },
-                                { $project: { password: 0 } },
-                            ],
-                            as: "pekerjaanDiserahkanPada",
-                        },
+                            },
+                            { $project: { password: 0 } },
+                        ],
+                        as: "account",
                     },
+                },
+                { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+            ];
 
-                    // Step 3: Lookup user document for account
-                    {
-                        $lookup: {
-                            from: "users",
-                            let: { userId: "$accountId" },
-                            pipeline: [
-                                {
-                                    $match: {
-                                        $expr: { $eq: ["$_id", "$$userId"] },
-                                    },
-                                },
-                                { $project: { password: 0 } },
-                            ],
-                            as: "account",
-                        },
-                    },
+            if (fullNameSearch) {
+                basePipeline.push({
+                    $match: {
+                        'account.fullName': {
+                            $regex: fullNameSearch,
+                            $options: 'i'
+                        }
+                    }
+                });
+            }
 
-                    // Step 4: Unwind account (optional)
-                    { $unwind: { path: "$account", preserveNullAndEmptyArrays: true } },
+            const pipelineWithPagination = [...basePipeline, { $skip: skip }, { $limit: limit }];
 
-                    // Step 5: Pagination
-                    { $skip: skip },
-                    { $limit: limit },
-                ]),
-                this.cutiModel.countDocuments(matchStage),
+            const [items, totalCount] = await Promise.all([
+                this.cutiModel.aggregate(pipelineWithPagination),
+                this.cutiModel.aggregate([
+                    ...basePipeline,
+                    { $count: 'total' }
+                ]).then(res => res[0]?.total || 0)
             ]);
-
 
             const isMax = skip + items.length >= totalCount;
 
@@ -122,6 +127,7 @@ export class CutiService {
             return formatResponse('error', 500, 'Failed to retrieve cuti list', error.message);
         }
     }
+
 
     async getCutiDetail(cutiId: string): Promise<any> {
         try {

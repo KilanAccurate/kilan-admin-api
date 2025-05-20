@@ -76,6 +76,7 @@ export class AbsensiController {
         @Query('type') type: 'all' | 'lembur' | 'reguler' = 'all',
         @Query('page') page = '1',
         @Query('limit') limit = '25',
+        @Query('search') search = '',
     ) {
         const startDate = startDateStr ? new Date(startDateStr) : undefined;
         const endDate = endDateStr ? new Date(endDateStr) : undefined;
@@ -89,6 +90,7 @@ export class AbsensiController {
             type,
             pageNum,
             limitNum,
+            search,
         );
     }
 
