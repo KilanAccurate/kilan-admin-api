@@ -69,6 +69,11 @@ export class SiteLocationService {
   ): Promise<any> {
     try {
       const newLocation = new this.siteLocationModel({
+        id: {
+          type: String,
+          default: () => uuidv4(),
+          unique: true,
+        },
         siteName,
         sitePolygon,
         siteCity,
