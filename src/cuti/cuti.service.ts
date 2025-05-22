@@ -171,16 +171,16 @@ export class CutiService {
                 { fullName: 1, role: 1, fcmToken: 1 }
             );
 
-            let adminList = await this.userModel.find(
-                { role: Role.Admin },
-                { fullName: 1, role: 1, fcmToken: 1 }
-            );
+            // let adminList = await this.userModel.find(
+            //     { role: Role.Admin },
+            //     { fullName: 1, role: 1, fcmToken: 1 }
+            // );
 
             let combinedSuperior = [
                 ...pjoList,
                 ...managerList,
                 ...hrdList,
-                ...adminList,
+                // ...adminList,
             ];
             await Promise.all(combinedSuperior.map(superior =>
                 this.fcmService.sendNotification(
