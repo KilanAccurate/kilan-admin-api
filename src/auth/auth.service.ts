@@ -54,7 +54,7 @@ export class AuthService {
                 this.userModel
                     .find(filter)
                     .select('-password')
-                    .sort({ createdAt: sortOption })
+                    .sort({ createdAt: sortOption, _id: sortOption })
                     .skip(skip)
                     .limit(limit)
                     .lean(),
