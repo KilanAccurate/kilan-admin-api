@@ -120,14 +120,14 @@ export class AuthService {
                 return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
             }
 
-            const siteExists = await this.siteLocationService.get(site);
-            if (!siteExists.data) {
-                return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
-            }
+            // const siteExists = await this.siteLocationService.get(site);
+            // if (!siteExists.data && !isAdmin) {
+            //     return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
+            // }
 
-            if (user.site._id.toString() !== site) {
-                return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
-            }
+            // if (user.site._id.toString() !== site && !isAdmin) {
+            //     return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
+            // }
 
             // Update FCM token in DB if provided
             if (fcmToken) {
@@ -266,7 +266,12 @@ export class AuthService {
 
     async deleteAuth(id: string) {
         try {
-            const result = await this.userModel.findByIdAndDelete(id);
+            const result = await this.userModel.findByIdAndUpdate(
+                id,
+                { deletedAt: new Date() },
+                { new: true }
+            );
+
             if (!result) {
                 return { status: 'error', statusCode: 404, message: 'User not found' };
             }
@@ -281,6 +286,7 @@ export class AuthService {
             return { status: 'error', statusCode: 500, message: 'Internal server error' };
         }
     }
+
 
     async updateFcmToken(userId: string, fcmToken: string, fcmTokenIssuedAt?: string) {
         try {
