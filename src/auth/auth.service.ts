@@ -31,7 +31,9 @@ export class AuthService {
                 limit = 10,
             } = query;
 
-            const filter: any = {};
+            const filter: any = {
+                deletedAt: null, // Exclude soft-deleted users
+            };
 
             if (search) {
                 filter.fullName = { $regex: search, $options: 'i' };
@@ -46,7 +48,6 @@ export class AuthService {
             }
 
             const sortOption = sortBy === 'asc' ? 1 : -1;
-
             const skip = (page - 1) * limit;
 
             const [users, total] = await Promise.all([
@@ -82,9 +83,13 @@ export class AuthService {
         }
     }
 
+
     async getUserById(userId: string) {
         try {
-            const user = await this.userModel.findById(userId).lean();
+            const user = await this.userModel.findOne({
+                _id: userId,
+                deletedAt: null, // Exclude soft-deleted users
+            }).lean();
 
             if (!user) {
                 return {
@@ -110,16 +115,25 @@ export class AuthService {
         }
     }
 
+
     async login(dto: LoginDto) {
-        const { fullName, password, site, isAdmin, fcmToken } = dto; // Add fcmToken in login DTO
+        const { fullName, password, site, isAdmin, fcmToken } = dto;
 
         try {
-            const user = await this.userModel.findOne({ fullName });
+            const user = await this.userModel.findOne({
+                fullName,
+                deletedAt: null, // Exclude soft-deleted users
+            });
 
             if (!user || !(await User.verifyPassword(password, user.password))) {
-                return { status: 'error', statusCode: 400, message: 'Invalid credentials' };
+                return {
+                    status: 'error',
+                    statusCode: 400,
+                    message: 'Invalid credentials',
+                };
             }
 
+            // Optional: Uncomment if you want to validate the assigned site
             // const siteExists = await this.siteLocationService.get(site);
             // if (!siteExists.data && !isAdmin) {
             //     return { status: 'error', statusCode: 404, message: 'Assigned site no longer exists' };
@@ -160,21 +174,49 @@ export class AuthService {
             };
         } catch (error) {
             console.error('Login error:', error);
-            return { status: 'error', statusCode: 500, message: 'Internal server error' };
+            return {
+                status: 'error',
+                statusCode: 500,
+                message: 'Internal server error',
+            };
         }
     }
 
-    async signup(dto: CreateUserDto) {
-        const { fullName, password, position, department, nik, site, phone, salary, role } = dto;
 
-        const existingUser = await this.userModel.findOne({ fullName });
+    async signup(dto: CreateUserDto) {
+        const {
+            fullName,
+            password,
+            position,
+            department,
+            nik,
+            site,
+            phone,
+            salary,
+            role,
+        } = dto;
+
+        // Only block signup if a non-deleted user with the same fullName exists
+        const existingUser = await this.userModel.findOne({
+            fullName,
+            deletedAt: null, // Ignore soft-deleted users
+        });
+
         if (existingUser) {
-            return { status: 'error', statusCode: 400, message: 'User already exists' };
+            return {
+                status: 'error',
+                statusCode: 400,
+                message: 'User already exists',
+            };
         }
 
         const siteExists = await this.siteLocationService.get(site);
         if (!siteExists.data) {
-            return { status: 'error', statusCode: 404, message: 'Site does not exist' };
+            return {
+                status: 'error',
+                statusCode: 404,
+                message: 'Site does not exist',
+            };
         }
 
         const hashedPassword = await User.hashPassword(password);
@@ -193,12 +235,20 @@ export class AuthService {
 
         await newUser.save();
 
-        return { status: 'success', statusCode: 201, message: 'Signup successful' };
+        return {
+            status: 'success',
+            statusCode: 201,
+            message: 'Signup successful',
+        };
     }
+
 
     async getUser(userId: string) {
         try {
-            const user = await this.userModel.findById(userId).lean();
+            const user = await this.userModel.findOne({
+                _id: userId,
+                deletedAt: null, // Exclude soft-deleted users
+            }).lean();
 
             if (!user) {
                 return {
@@ -207,7 +257,6 @@ export class AuthService {
                     message: 'User not found',
                 };
             }
-
 
             return {
                 status: 'success',
@@ -225,9 +274,10 @@ export class AuthService {
         }
     }
 
+
     async editAuth(id: string, createUserDto: CreateUserDto) {
         try {
-            const user = await this.userModel.findById(id);
+            const user = await this.userModel.findOne({ _id: id, deletedAt: null }); // Exclude soft-deleted users
             if (!user) {
                 return { status: 'error', statusCode: 404, message: 'User not found' };
             }
@@ -241,8 +291,6 @@ export class AuthService {
             if (createUserDto.fullName) user.fullName = createUserDto.fullName;
             if (createUserDto.password) user.password = await User.hashPassword(createUserDto.password);
             if (createUserDto.site) user.site = siteExists.data;
-
-            // If department, position, or other fields are provided, they will also be updated
             if (createUserDto.position) user.position = createUserDto.position;
             if (createUserDto.department) user.department = createUserDto.department;
             if (createUserDto.nik) user.nik = createUserDto.nik;
@@ -263,6 +311,7 @@ export class AuthService {
             return { status: 'error', statusCode: 500, message: 'Internal server error' };
         }
     }
+
 
     async deleteAuth(id: string) {
         try {
@@ -290,7 +339,7 @@ export class AuthService {
 
     async updateFcmToken(userId: string, fcmToken: string, fcmTokenIssuedAt?: string) {
         try {
-            const user = await this.userModel.findById(userId);
+            const user = await this.userModel.findOne({ _id: userId, deletedAt: null }); // Exclude soft-deleted users
             if (!user) {
                 throw new NotFoundException('User not found');
             }
@@ -320,7 +369,5 @@ export class AuthService {
             };
         }
     }
-
-
 
 }
