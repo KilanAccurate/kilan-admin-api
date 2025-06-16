@@ -10,6 +10,8 @@ import { Media } from '../cloudinary/schemas/media.schema';
 import { Role, User, UserDocument } from '../auth/model/user.model';
 import { FcmService } from '../firebase/fcm/fcm.service';
 import { SiteLocation, SiteLocationDocument } from '../location/schemas/site-location.schema';
+import * as geoTz from 'geo-tz';
+import * as moment from 'moment-timezone';
 
 @Injectable()
 export class AbsensiService {
@@ -192,7 +194,36 @@ export class AbsensiService {
             aggregationPipeline.push({ $limit: limit });
 
             const [data, totalCountResult] = await Promise.all([
-                this.absensiModel.aggregate(aggregationPipeline),
+                this.absensiModel.aggregate(aggregationPipeline).then(items =>
+                    items.map(item => {
+                        const start = item.startPosition?.location;
+                        const end = item.endPosition?.location;
+
+                        let adjustedStartDate = item.startDate;
+                        let adjustedEndDate = item.endDate;
+
+                        try {
+                            if (start?.lat !== undefined && start?.lon !== undefined) {
+                                const [tz] = geoTz.find(start.lat, start.lon);
+                                adjustedStartDate = moment(item.startDate).tz(tz).toDate();
+                            }
+
+                            if (end?.lat !== undefined && end?.lon !== undefined) {
+                                const [tz] = geoTz.find(end.lat, end.lon);
+                                adjustedEndDate = moment(item.endDate).tz(tz).toDate();
+                            }
+                        } catch (err) {
+                            // Keep UTC date if timezone lookup fails
+                            console.warn('Timezone conversion failed:', err);
+                        }
+
+                        return {
+                            ...item,
+                            startDate: adjustedStartDate,
+                            endDate: adjustedEndDate,
+                        };
+                    })
+                ),
                 this.absensiModel.aggregate([
                     { $match: matchStage },
                     {
