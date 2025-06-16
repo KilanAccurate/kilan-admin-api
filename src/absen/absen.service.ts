@@ -644,5 +644,17 @@ export class AbsensiService {
         }
     }
 
+    async deleteUserAbsensi(absensiId: string): Promise<any> {
+        try {
+            const absensi = await this.absensiModel.findByIdAndDelete(absensiId).exec();
+            if (!absensi) {
+                return formatResponse('error', 404, 'Absensi not found');
+            }
+            return formatResponse('success', 200, 'Absensi deleted successfully', absensi);
+        } catch (error) {
+            return formatResponse('error', 500, 'Failed to delete absensi', error.message);
+        }
+    }
+
 }
 

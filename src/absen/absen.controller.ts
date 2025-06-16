@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors, Request, Get, Put, Param, Query } from "@nestjs/common";
+import { Body, Controller, Post, UploadedFile, UseGuards, UseInterceptors, Request, Get, Put, Param, Query, Delete } from "@nestjs/common";
 import { AbsensiService } from "./absen.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../auth/jwt.guard";
@@ -150,6 +150,15 @@ export class AbsensiController {
     ) {
         const accountId = req.user._id;
         return this.absensiService.actionLemburan(accountId, approvalData);
+    }
+
+    @Delete(':id')
+    async deleteAbsensiDanLembur(
+        @Request() req,
+        @Param('id') id: string,
+    ) {
+        const accountId = req.user._id;
+        return this.absensiService.deleteUserAbsensi(id);
     }
 
 }
