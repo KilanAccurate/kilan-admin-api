@@ -64,4 +64,9 @@ export class CutiController {
         return this.cutiService.getCutiDetail(id);
     }
 
+    @Get(':id')
+    async deleteCuti(@Param('id') id: string) {
+        return this.cutiService.deleteUserCuti(id);
+    }
+
 }

@@ -364,4 +364,19 @@ export class CutiService {
             return formatResponse('error', 500, 'Failed to approve cuti', error.message);
         }
     }
+
+    async deleteUserCuti(cutiId: string): Promise<any> {
+        try {
+            const cuti = await this.cutiModel.findByIdAndDelete(cutiId).exec();
+
+            if (!cuti) {
+                return formatResponse('error', 404, 'Cuti not found or unauthorized');
+            }
+
+            return formatResponse('success', 200, 'Cuti deleted successfully', cuti);
+        } catch (error) {
+            return formatResponse('error', 500, 'Failed to delete cuti', error.message);
+        }
+    }
+
 }
