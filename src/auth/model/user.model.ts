@@ -11,6 +11,7 @@ export enum Role {
     Staff = 'staff',
     Admin = 'admin',
     HRD = 'hrd',
+    Viewer = "viewer"
 }
 
 @Schema()
