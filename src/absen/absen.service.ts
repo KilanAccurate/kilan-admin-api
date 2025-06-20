@@ -176,7 +176,20 @@ export class AbsensiService {
                         as: 'account'
                     }
                 },
-                { $unwind: { path: '$account', preserveNullAndEmptyArrays: true } },
+                {
+                    $addFields: {
+                        detectedSite: { $toObjectId: "$detectedSite" }
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'site_locations', // make sure this matches the actual collection name in MongoDB
+                        localField: 'detectedSite',
+                        foreignField: '_id',
+                        as: 'siteLocation'
+                    }
+                },
+                { $unwind: { path: '$siteLocation', preserveNullAndEmptyArrays: true } },
             ];
 
             if (fullNameSearch) {
