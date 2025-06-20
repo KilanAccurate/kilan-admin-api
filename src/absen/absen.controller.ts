@@ -157,7 +157,6 @@ export class AbsensiController {
         @Request() req,
         @Param('id') id: string,
     ) {
-        const accountId = req.user._id;
         return this.absensiService.deleteUserAbsensi(id);
     }
 
