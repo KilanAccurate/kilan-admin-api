@@ -152,7 +152,7 @@ export class AuthService {
             // Check admin access rights
             if (
                 isAdmin === true &&
-                ![Role.PJO, Role.Admin, Role.Manager, Role.HRD].includes(user.role)
+                ![Role.PJO, Role.Admin, Role.Manager, Role.HRD, Role.Viewer].includes(user.role)
             ) {
                 return {
                     status: 'error',
